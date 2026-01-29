@@ -13,7 +13,10 @@ import { Route as AuthAuthLayoutRouteImport } from './routes/_auth/_auth-layout'
 import { Route as StoreLayoutRouteImport } from './routes/$store/_layout'
 import { Route as StoreLayoutIndexRouteImport } from './routes/$store/_layout/index'
 import { Route as AuthAuthLayoutSigninRouteImport } from './routes/_auth/_auth-layout/signin'
+import { Route as StoreLayoutTagsRouteImport } from './routes/$store/_layout/tags'
 import { Route as StoreLayoutProductsRouteImport } from './routes/$store/_layout/products'
+import { Route as StoreLayoutCategoriesRouteImport } from './routes/$store/_layout/categories'
+import { Route as StoreLayoutProductsAddRouteImport } from './routes/$store/_layout/products_.add'
 
 const AuthAuthLayoutRoute = AuthAuthLayoutRouteImport.update({
   id: '/_auth/_auth-layout',
@@ -34,45 +37,87 @@ const AuthAuthLayoutSigninRoute = AuthAuthLayoutSigninRouteImport.update({
   path: '/signin',
   getParentRoute: () => AuthAuthLayoutRoute,
 } as any)
+const StoreLayoutTagsRoute = StoreLayoutTagsRouteImport.update({
+  id: '/tags',
+  path: '/tags',
+  getParentRoute: () => StoreLayoutRoute,
+} as any)
 const StoreLayoutProductsRoute = StoreLayoutProductsRouteImport.update({
   id: '/products',
   path: '/products',
+  getParentRoute: () => StoreLayoutRoute,
+} as any)
+const StoreLayoutCategoriesRoute = StoreLayoutCategoriesRouteImport.update({
+  id: '/categories',
+  path: '/categories',
+  getParentRoute: () => StoreLayoutRoute,
+} as any)
+const StoreLayoutProductsAddRoute = StoreLayoutProductsAddRouteImport.update({
+  id: '/products_/add',
+  path: '/products/add',
   getParentRoute: () => StoreLayoutRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/$store': typeof StoreLayoutRouteWithChildren
   '/': typeof AuthAuthLayoutRouteWithChildren
+  '/$store/categories': typeof StoreLayoutCategoriesRoute
   '/$store/products': typeof StoreLayoutProductsRoute
+  '/$store/tags': typeof StoreLayoutTagsRoute
   '/signin': typeof AuthAuthLayoutSigninRoute
   '/$store/': typeof StoreLayoutIndexRoute
+  '/$store/products/add': typeof StoreLayoutProductsAddRoute
 }
 export interface FileRoutesByTo {
   '/': typeof AuthAuthLayoutRouteWithChildren
+  '/$store/categories': typeof StoreLayoutCategoriesRoute
   '/$store/products': typeof StoreLayoutProductsRoute
+  '/$store/tags': typeof StoreLayoutTagsRoute
   '/signin': typeof AuthAuthLayoutSigninRoute
   '/$store': typeof StoreLayoutIndexRoute
+  '/$store/products/add': typeof StoreLayoutProductsAddRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/$store/_layout': typeof StoreLayoutRouteWithChildren
   '/_auth/_auth-layout': typeof AuthAuthLayoutRouteWithChildren
+  '/$store/_layout/categories': typeof StoreLayoutCategoriesRoute
   '/$store/_layout/products': typeof StoreLayoutProductsRoute
+  '/$store/_layout/tags': typeof StoreLayoutTagsRoute
   '/_auth/_auth-layout/signin': typeof AuthAuthLayoutSigninRoute
   '/$store/_layout/': typeof StoreLayoutIndexRoute
+  '/$store/_layout/products_/add': typeof StoreLayoutProductsAddRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/$store' | '/' | '/$store/products' | '/signin' | '/$store/'
+  fullPaths:
+    | '/$store'
+    | '/'
+    | '/$store/categories'
+    | '/$store/products'
+    | '/$store/tags'
+    | '/signin'
+    | '/$store/'
+    | '/$store/products/add'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/$store/products' | '/signin' | '/$store'
+  to:
+    | '/'
+    | '/$store/categories'
+    | '/$store/products'
+    | '/$store/tags'
+    | '/signin'
+    | '/$store'
+    | '/$store/products/add'
   id:
     | '__root__'
     | '/$store/_layout'
     | '/_auth/_auth-layout'
+    | '/$store/_layout/categories'
     | '/$store/_layout/products'
+    | '/$store/_layout/tags'
     | '/_auth/_auth-layout/signin'
     | '/$store/_layout/'
+    | '/$store/_layout/products_/add'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -110,6 +155,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthAuthLayoutSigninRouteImport
       parentRoute: typeof AuthAuthLayoutRoute
     }
+    '/$store/_layout/tags': {
+      id: '/$store/_layout/tags'
+      path: '/tags'
+      fullPath: '/$store/tags'
+      preLoaderRoute: typeof StoreLayoutTagsRouteImport
+      parentRoute: typeof StoreLayoutRoute
+    }
     '/$store/_layout/products': {
       id: '/$store/_layout/products'
       path: '/products'
@@ -117,17 +169,37 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StoreLayoutProductsRouteImport
       parentRoute: typeof StoreLayoutRoute
     }
+    '/$store/_layout/categories': {
+      id: '/$store/_layout/categories'
+      path: '/categories'
+      fullPath: '/$store/categories'
+      preLoaderRoute: typeof StoreLayoutCategoriesRouteImport
+      parentRoute: typeof StoreLayoutRoute
+    }
+    '/$store/_layout/products_/add': {
+      id: '/$store/_layout/products_/add'
+      path: '/products/add'
+      fullPath: '/$store/products/add'
+      preLoaderRoute: typeof StoreLayoutProductsAddRouteImport
+      parentRoute: typeof StoreLayoutRoute
+    }
   }
 }
 
 interface StoreLayoutRouteChildren {
+  StoreLayoutCategoriesRoute: typeof StoreLayoutCategoriesRoute
   StoreLayoutProductsRoute: typeof StoreLayoutProductsRoute
+  StoreLayoutTagsRoute: typeof StoreLayoutTagsRoute
   StoreLayoutIndexRoute: typeof StoreLayoutIndexRoute
+  StoreLayoutProductsAddRoute: typeof StoreLayoutProductsAddRoute
 }
 
 const StoreLayoutRouteChildren: StoreLayoutRouteChildren = {
+  StoreLayoutCategoriesRoute: StoreLayoutCategoriesRoute,
   StoreLayoutProductsRoute: StoreLayoutProductsRoute,
+  StoreLayoutTagsRoute: StoreLayoutTagsRoute,
   StoreLayoutIndexRoute: StoreLayoutIndexRoute,
+  StoreLayoutProductsAddRoute: StoreLayoutProductsAddRoute,
 }
 
 const StoreLayoutRouteWithChildren = StoreLayoutRoute._addFileChildren(

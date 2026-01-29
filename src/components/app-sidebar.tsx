@@ -68,7 +68,7 @@ const data = {
 				},
 				{
 					title: "Categorias",
-					url: "#",
+					url: "/$store/categories",
 				},
 				{
 					title: "Pedidos",
@@ -76,7 +76,7 @@ const data = {
 				},
 				{
 					title: "Tags",
-					url: "#",
+					url: "/$store/tags",
 				},
 				{
 					title: "Imagens",

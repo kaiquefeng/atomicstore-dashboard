@@ -31,6 +31,7 @@ import {
 	IconPlus,
 	IconTrendingUp,
 } from "@tabler/icons-react";
+import { Link, useParams } from "@tanstack/react-router";
 import {
 	type ColumnDef,
 	type ColumnFiltersState,
@@ -333,6 +334,7 @@ export function DataTable({
 }: {
 	data: z.infer<typeof schema>[];
 }) {
+	const { store } = useParams({ strict: false });
 	const [data, setData] = React.useState(() => initialData);
 	const [rowSelection, setRowSelection] = React.useState({});
 	const [columnVisibility, setColumnVisibility] =
@@ -461,9 +463,11 @@ export function DataTable({
 								})}
 						</DropdownMenuContent>
 					</DropdownMenu>
-					<Button variant="outline" size="sm">
-						<IconPlus />
-						<span className="hidden lg:inline">Adicionar produto</span>
+					<Button variant="outline" size="sm" asChild>
+						<Link to="/$store/products/add" params={{ store: store || "" }}>
+							<IconPlus />
+							<span className="hidden lg:inline">Adicionar produto</span>
+						</Link>
 					</Button>
 				</div>
 			</div>
