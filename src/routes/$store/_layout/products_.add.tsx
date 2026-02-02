@@ -10,7 +10,7 @@ import {
 	IconTrash,
 	IconX,
 } from "@tabler/icons-react";
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import * as React from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -165,7 +165,7 @@ interface VideoItem {
 }
 
 function AddProductPage() {
-	const navigate = useNavigate();
+	// const navigate = useNavigate();
 	const { store } = Route.useParams();
 
 	const [title, setTitle] = React.useState("Camiseta Básica");
