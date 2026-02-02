@@ -1,0 +1,178 @@
+[
+  {
+    "id": "img-001",
+    "name": "Camiseta Branca - Frente",
+    "preview": "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400&h=400&fit=crop",
+    "productId": "prod-001",
+    "productName": "Camiseta Básica Branca",
+    "isPrimary": true,
+    "size": 245000,
+    "dimensions": { "width": 1200, "height": 1200 },
+    "uploadedAt": "2026-01-15T10:30:00Z"
+  },
+  {
+    "id": "img-002",
+    "name": "Camiseta Branca - Costas",
+    "preview": "https://images.unsplash.com/photo-1618354691373-d851c5c3a990?w=400&h=400&fit=crop",
+    "productId": "prod-001",
+    "productName": "Camiseta Básica Branca",
+    "isPrimary": false,
+    "size": 198000,
+    "dimensions": { "width": 1200, "height": 1200 },
+    "uploadedAt": "2026-01-15T10:31:00Z"
+  },
+  {
+    "id": "img-003",
+    "name": "Camiseta Branca - Detalhe",
+    "preview": "https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?w=400&h=400&fit=crop",
+    "productId": "prod-001",
+    "productName": "Camiseta Básica Branca",
+    "isPrimary": false,
+    "size": 312000,
+    "dimensions": { "width": 1200, "height": 1200 },
+    "uploadedAt": "2026-01-15T10:32:00Z"
+  },
+  {
+    "id": "img-004",
+    "name": "Jaqueta Jeans - Principal",
+    "preview": "https://images.unsplash.com/photo-1551028719-00167b16eac5?w=400&h=400&fit=crop",
+    "productId": "prod-002",
+    "productName": "Jaqueta Jeans Clássica",
+    "isPrimary": true,
+    "size": 425000,
+    "dimensions": { "width": 1200, "height": 1200 },
+    "uploadedAt": "2026-01-16T14:20:00Z"
+  },
+  {
+    "id": "img-005",
+    "name": "Jaqueta Jeans - Lateral",
+    "preview": "https://images.unsplash.com/photo-1576566588028-4147f3842f27?w=400&h=400&fit=crop",
+    "productId": "prod-002",
+    "productName": "Jaqueta Jeans Clássica",
+    "isPrimary": false,
+    "size": 389000,
+    "dimensions": { "width": 1200, "height": 1200 },
+    "uploadedAt": "2026-01-16T14:21:00Z"
+  },
+  {
+    "id": "img-006",
+    "name": "Moletom Preto - Frente",
+    "preview": "https://images.unsplash.com/photo-1556821840-3a63f95609a7?w=400&h=400&fit=crop",
+    "productId": "prod-003",
+    "productName": "Moletom Oversized",
+    "isPrimary": true,
+    "size": 356000,
+    "dimensions": { "width": 1200, "height": 1200 },
+    "uploadedAt": "2026-01-18T09:15:00Z"
+  },
+  {
+    "id": "img-007",
+    "name": "Moletom Preto - Detalhe Capuz",
+    "preview": "https://images.unsplash.com/photo-1578587018452-892bacefd3f2?w=400&h=400&fit=crop",
+    "productId": "prod-003",
+    "productName": "Moletom Oversized",
+    "isPrimary": false,
+    "size": 278000,
+    "dimensions": { "width": 1200, "height": 1200 },
+    "uploadedAt": "2026-01-18T09:16:00Z"
+  },
+  {
+    "id": "img-008",
+    "name": "Polo Vermelha - Principal",
+    "preview": "https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=400&h=400&fit=crop",
+    "productId": "prod-004",
+    "productName": "Camisa Polo Premium",
+    "isPrimary": true,
+    "size": 289000,
+    "dimensions": { "width": 1200, "height": 1200 },
+    "uploadedAt": "2026-01-20T11:45:00Z"
+  },
+  {
+    "id": "img-009",
+    "name": "Casaco Inverno - Frente",
+    "preview": "https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=400&h=400&fit=crop",
+    "productId": "prod-005",
+    "productName": "Casaco de Inverno",
+    "isPrimary": true,
+    "size": 478000,
+    "dimensions": { "width": 1200, "height": 1200 },
+    "uploadedAt": "2026-01-22T16:00:00Z"
+  },
+  {
+    "id": "img-010",
+    "name": "Casaco Inverno - Costas",
+    "preview": "https://images.unsplash.com/photo-1434389677669-e08b4cac3105?w=400&h=400&fit=crop",
+    "productId": "prod-005",
+    "productName": "Casaco de Inverno",
+    "isPrimary": false,
+    "size": 445000,
+    "dimensions": { "width": 1200, "height": 1200 },
+    "uploadedAt": "2026-01-22T16:01:00Z"
+  },
+  {
+    "id": "img-011",
+    "name": "Blusa Listrada - Principal",
+    "preview": "https://images.unsplash.com/photo-1620799140408-edc6dcb6d633?w=400&h=400&fit=crop",
+    "productId": "prod-006",
+    "productName": "Blusa Listrada Casual",
+    "isPrimary": true,
+    "size": 267000,
+    "dimensions": { "width": 1200, "height": 1200 },
+    "uploadedAt": "2026-01-24T13:30:00Z"
+  },
+  {
+    "id": "img-012",
+    "name": "Camiseta Estampada - Frente",
+    "preview": "https://images.unsplash.com/photo-1603252109303-2751441dd157?w=400&h=400&fit=crop",
+    "productId": "prod-007",
+    "productName": "Camiseta Estampada Arte",
+    "isPrimary": true,
+    "size": 334000,
+    "dimensions": { "width": 1200, "height": 1200 },
+    "uploadedAt": "2026-01-26T08:20:00Z"
+  },
+  {
+    "id": "img-013",
+    "name": "Regata Esportiva - Principal",
+    "preview": "https://images.unsplash.com/photo-1558171813-4c088753af8f?w=400&h=400&fit=crop",
+    "productId": "prod-008",
+    "productName": "Regata Esportiva",
+    "isPrimary": true,
+    "size": 198000,
+    "dimensions": { "width": 1200, "height": 1200 },
+    "uploadedAt": "2026-01-28T10:00:00Z"
+  },
+  {
+    "id": "img-014",
+    "name": "Jaqueta Couro - Principal",
+    "preview": "https://images.unsplash.com/photo-1520975661595-6453be3f7070?w=400&h=400&fit=crop",
+    "productId": "prod-009",
+    "productName": "Jaqueta de Couro",
+    "isPrimary": true,
+    "size": 512000,
+    "dimensions": { "width": 1200, "height": 1200 },
+    "uploadedAt": "2026-01-29T14:45:00Z"
+  },
+  {
+    "id": "img-015",
+    "name": "Jaqueta Couro - Detalhe",
+    "preview": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop",
+    "productId": "prod-009",
+    "productName": "Jaqueta de Couro",
+    "isPrimary": false,
+    "size": 467000,
+    "dimensions": { "width": 1200, "height": 1200 },
+    "uploadedAt": "2026-01-29T14:46:00Z"
+  },
+  {
+    "id": "img-016",
+    "name": "Vestido Floral - Principal",
+    "preview": "https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?w=400&h=400&fit=crop",
+    "productId": "prod-010",
+    "productName": "Vestido Floral Verão",
+    "isPrimary": true,
+    "size": 378000,
+    "dimensions": { "width": 1200, "height": 1200 },
+    "uploadedAt": "2026-01-30T09:00:00Z"
+  }
+]

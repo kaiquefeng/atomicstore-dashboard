@@ -15,7 +15,11 @@ import { Route as StoreLayoutIndexRouteImport } from './routes/$store/_layout/in
 import { Route as AuthAuthLayoutSigninRouteImport } from './routes/_auth/_auth-layout/signin'
 import { Route as StoreLayoutTagsRouteImport } from './routes/$store/_layout/tags'
 import { Route as StoreLayoutProductsRouteImport } from './routes/$store/_layout/products'
+import { Route as StoreLayoutOrdersRouteImport } from './routes/$store/_layout/orders'
+import { Route as StoreLayoutImagesRouteImport } from './routes/$store/_layout/images'
+import { Route as StoreLayoutCouponsRouteImport } from './routes/$store/_layout/coupons'
 import { Route as StoreLayoutCategoriesRouteImport } from './routes/$store/_layout/categories'
+import { Route as StoreLayoutSettingsShippingRouteImport } from './routes/$store/_layout/settings_.shipping'
 import { Route as StoreLayoutProductsAddRouteImport } from './routes/$store/_layout/products_.add'
 
 const AuthAuthLayoutRoute = AuthAuthLayoutRouteImport.update({
@@ -47,11 +51,32 @@ const StoreLayoutProductsRoute = StoreLayoutProductsRouteImport.update({
   path: '/products',
   getParentRoute: () => StoreLayoutRoute,
 } as any)
+const StoreLayoutOrdersRoute = StoreLayoutOrdersRouteImport.update({
+  id: '/orders',
+  path: '/orders',
+  getParentRoute: () => StoreLayoutRoute,
+} as any)
+const StoreLayoutImagesRoute = StoreLayoutImagesRouteImport.update({
+  id: '/images',
+  path: '/images',
+  getParentRoute: () => StoreLayoutRoute,
+} as any)
+const StoreLayoutCouponsRoute = StoreLayoutCouponsRouteImport.update({
+  id: '/coupons',
+  path: '/coupons',
+  getParentRoute: () => StoreLayoutRoute,
+} as any)
 const StoreLayoutCategoriesRoute = StoreLayoutCategoriesRouteImport.update({
   id: '/categories',
   path: '/categories',
   getParentRoute: () => StoreLayoutRoute,
 } as any)
+const StoreLayoutSettingsShippingRoute =
+  StoreLayoutSettingsShippingRouteImport.update({
+    id: '/settings_/shipping',
+    path: '/settings/shipping',
+    getParentRoute: () => StoreLayoutRoute,
+  } as any)
 const StoreLayoutProductsAddRoute = StoreLayoutProductsAddRouteImport.update({
   id: '/products_/add',
   path: '/products/add',
@@ -62,31 +87,43 @@ export interface FileRoutesByFullPath {
   '/$store': typeof StoreLayoutRouteWithChildren
   '/': typeof AuthAuthLayoutRouteWithChildren
   '/$store/categories': typeof StoreLayoutCategoriesRoute
+  '/$store/coupons': typeof StoreLayoutCouponsRoute
+  '/$store/images': typeof StoreLayoutImagesRoute
+  '/$store/orders': typeof StoreLayoutOrdersRoute
   '/$store/products': typeof StoreLayoutProductsRoute
   '/$store/tags': typeof StoreLayoutTagsRoute
   '/signin': typeof AuthAuthLayoutSigninRoute
   '/$store/': typeof StoreLayoutIndexRoute
   '/$store/products/add': typeof StoreLayoutProductsAddRoute
+  '/$store/settings/shipping': typeof StoreLayoutSettingsShippingRoute
 }
 export interface FileRoutesByTo {
   '/': typeof AuthAuthLayoutRouteWithChildren
   '/$store/categories': typeof StoreLayoutCategoriesRoute
+  '/$store/coupons': typeof StoreLayoutCouponsRoute
+  '/$store/images': typeof StoreLayoutImagesRoute
+  '/$store/orders': typeof StoreLayoutOrdersRoute
   '/$store/products': typeof StoreLayoutProductsRoute
   '/$store/tags': typeof StoreLayoutTagsRoute
   '/signin': typeof AuthAuthLayoutSigninRoute
   '/$store': typeof StoreLayoutIndexRoute
   '/$store/products/add': typeof StoreLayoutProductsAddRoute
+  '/$store/settings/shipping': typeof StoreLayoutSettingsShippingRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/$store/_layout': typeof StoreLayoutRouteWithChildren
   '/_auth/_auth-layout': typeof AuthAuthLayoutRouteWithChildren
   '/$store/_layout/categories': typeof StoreLayoutCategoriesRoute
+  '/$store/_layout/coupons': typeof StoreLayoutCouponsRoute
+  '/$store/_layout/images': typeof StoreLayoutImagesRoute
+  '/$store/_layout/orders': typeof StoreLayoutOrdersRoute
   '/$store/_layout/products': typeof StoreLayoutProductsRoute
   '/$store/_layout/tags': typeof StoreLayoutTagsRoute
   '/_auth/_auth-layout/signin': typeof AuthAuthLayoutSigninRoute
   '/$store/_layout/': typeof StoreLayoutIndexRoute
   '/$store/_layout/products_/add': typeof StoreLayoutProductsAddRoute
+  '/$store/_layout/settings_/shipping': typeof StoreLayoutSettingsShippingRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -94,30 +131,42 @@ export interface FileRouteTypes {
     | '/$store'
     | '/'
     | '/$store/categories'
+    | '/$store/coupons'
+    | '/$store/images'
+    | '/$store/orders'
     | '/$store/products'
     | '/$store/tags'
     | '/signin'
     | '/$store/'
     | '/$store/products/add'
+    | '/$store/settings/shipping'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/$store/categories'
+    | '/$store/coupons'
+    | '/$store/images'
+    | '/$store/orders'
     | '/$store/products'
     | '/$store/tags'
     | '/signin'
     | '/$store'
     | '/$store/products/add'
+    | '/$store/settings/shipping'
   id:
     | '__root__'
     | '/$store/_layout'
     | '/_auth/_auth-layout'
     | '/$store/_layout/categories'
+    | '/$store/_layout/coupons'
+    | '/$store/_layout/images'
+    | '/$store/_layout/orders'
     | '/$store/_layout/products'
     | '/$store/_layout/tags'
     | '/_auth/_auth-layout/signin'
     | '/$store/_layout/'
     | '/$store/_layout/products_/add'
+    | '/$store/_layout/settings_/shipping'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -169,11 +218,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StoreLayoutProductsRouteImport
       parentRoute: typeof StoreLayoutRoute
     }
+    '/$store/_layout/orders': {
+      id: '/$store/_layout/orders'
+      path: '/orders'
+      fullPath: '/$store/orders'
+      preLoaderRoute: typeof StoreLayoutOrdersRouteImport
+      parentRoute: typeof StoreLayoutRoute
+    }
+    '/$store/_layout/images': {
+      id: '/$store/_layout/images'
+      path: '/images'
+      fullPath: '/$store/images'
+      preLoaderRoute: typeof StoreLayoutImagesRouteImport
+      parentRoute: typeof StoreLayoutRoute
+    }
+    '/$store/_layout/coupons': {
+      id: '/$store/_layout/coupons'
+      path: '/coupons'
+      fullPath: '/$store/coupons'
+      preLoaderRoute: typeof StoreLayoutCouponsRouteImport
+      parentRoute: typeof StoreLayoutRoute
+    }
     '/$store/_layout/categories': {
       id: '/$store/_layout/categories'
       path: '/categories'
       fullPath: '/$store/categories'
       preLoaderRoute: typeof StoreLayoutCategoriesRouteImport
+      parentRoute: typeof StoreLayoutRoute
+    }
+    '/$store/_layout/settings_/shipping': {
+      id: '/$store/_layout/settings_/shipping'
+      path: '/settings/shipping'
+      fullPath: '/$store/settings/shipping'
+      preLoaderRoute: typeof StoreLayoutSettingsShippingRouteImport
       parentRoute: typeof StoreLayoutRoute
     }
     '/$store/_layout/products_/add': {
@@ -188,18 +265,26 @@ declare module '@tanstack/react-router' {
 
 interface StoreLayoutRouteChildren {
   StoreLayoutCategoriesRoute: typeof StoreLayoutCategoriesRoute
+  StoreLayoutCouponsRoute: typeof StoreLayoutCouponsRoute
+  StoreLayoutImagesRoute: typeof StoreLayoutImagesRoute
+  StoreLayoutOrdersRoute: typeof StoreLayoutOrdersRoute
   StoreLayoutProductsRoute: typeof StoreLayoutProductsRoute
   StoreLayoutTagsRoute: typeof StoreLayoutTagsRoute
   StoreLayoutIndexRoute: typeof StoreLayoutIndexRoute
   StoreLayoutProductsAddRoute: typeof StoreLayoutProductsAddRoute
+  StoreLayoutSettingsShippingRoute: typeof StoreLayoutSettingsShippingRoute
 }
 
 const StoreLayoutRouteChildren: StoreLayoutRouteChildren = {
   StoreLayoutCategoriesRoute: StoreLayoutCategoriesRoute,
+  StoreLayoutCouponsRoute: StoreLayoutCouponsRoute,
+  StoreLayoutImagesRoute: StoreLayoutImagesRoute,
+  StoreLayoutOrdersRoute: StoreLayoutOrdersRoute,
   StoreLayoutProductsRoute: StoreLayoutProductsRoute,
   StoreLayoutTagsRoute: StoreLayoutTagsRoute,
   StoreLayoutIndexRoute: StoreLayoutIndexRoute,
   StoreLayoutProductsAddRoute: StoreLayoutProductsAddRoute,
+  StoreLayoutSettingsShippingRoute: StoreLayoutSettingsShippingRoute,
 }
 
 const StoreLayoutRouteWithChildren = StoreLayoutRoute._addFileChildren(

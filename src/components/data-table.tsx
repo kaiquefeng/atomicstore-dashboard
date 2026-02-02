@@ -49,7 +49,7 @@ import {
 } from "@tanstack/react-table";
 import * as React from "react";
 import { Area, AreaChart, CartesianGrid, XAxis } from "recharts";
-import { toast } from "sonner";
+// import { toast } from "sonner";
 import { z } from "zod";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -201,11 +201,11 @@ const columns: ColumnDef<z.infer<typeof schema>>[] = [
 			<form
 				onSubmit={(e) => {
 					e.preventDefault();
-					toast.promise(new Promise((resolve) => setTimeout(resolve, 1000)), {
-						loading: `Saving ${row.original.header}`,
-						success: "Done",
-						error: "Error",
-					});
+					// toast.promise(new Promise((resolve) => setTimeout(resolve, 1000)), {
+					// 	loading: `Saving ${row.original.header}`,
+					// 	success: "Done",
+					// 	error: "Error",
+					// });
 				}}
 			>
 				<Label htmlFor={`${row.original.id}-target`} className="sr-only">
@@ -226,11 +226,11 @@ const columns: ColumnDef<z.infer<typeof schema>>[] = [
 			<form
 				onSubmit={(e) => {
 					e.preventDefault();
-					toast.promise(new Promise((resolve) => setTimeout(resolve, 1000)), {
-						loading: `Saving ${row.original.header}`,
-						success: "Done",
-						error: "Error",
-					});
+					// toast.promise(new Promise((resolve) => setTimeout(resolve, 1000)), {
+					// 	loading: `Saving ${row.original.header}`,
+					// 	success: "Done",
+					// 	error: "Error",
+					// });
 				}}
 			>
 				<Label htmlFor={`${row.original.id}-limit`} className="sr-only">

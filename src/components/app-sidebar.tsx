@@ -9,6 +9,7 @@ import {
 	PieChart,
 	Settings2,
 	ShoppingBag,
+	Truck,
 	UsersRound,
 } from "lucide-react";
 import type * as React from "react";
@@ -72,7 +73,7 @@ const data = {
 				},
 				{
 					title: "Pedidos",
-					url: "#",
+					url: "/$store/orders",
 				},
 				{
 					title: "Tags",
@@ -80,11 +81,11 @@ const data = {
 				},
 				{
 					title: "Imagens",
-					url: "#",
+					url: "/$store/images",
 				},
 				{
 					title: "Cupons",
-					url: "#",
+					url: "/$store/coupons",
 				},
 			],
 		},
@@ -96,6 +97,11 @@ const data = {
 			items: [],
 		},
 		{
+			title: "Métodos de envio",
+			url: "/$store/settings/shipping",
+			icon: Truck,
+		},
+		{
 			title: "Configurações",
 			url: "#",
 			icon: Settings2,
@@ -104,6 +110,7 @@ const data = {
 					title: "Geral",
 					url: "#",
 				},
+
 				{
 					title: "Time",
 					url: "#",

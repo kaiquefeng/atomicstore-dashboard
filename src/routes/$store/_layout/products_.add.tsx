@@ -12,7 +12,7 @@ import {
 } from "@tabler/icons-react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import * as React from "react";
-import { toast } from "sonner";
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -472,14 +472,14 @@ function AddProductPage() {
 	function handleSubmit(e: React.FormEvent) {
 		e.preventDefault();
 
-		toast.promise(new Promise((resolve) => setTimeout(resolve, 1500)), {
-			loading: "Saving product...",
-			success: () => {
-				navigate({ to: "/$store/products", params: { store } });
-				return "Product saved successfully!";
-			},
-			error: "Failed to save product",
-		});
+		// toast.promise(new Promise((resolve) => setTimeout(resolve, 1500)), {
+		// 	loading: "Saving product...",
+		// 	success: () => {
+		// 		navigate({ to: "/$store/products", params: { store } });
+		// 		return "Product saved successfully!";
+		// 	},
+		// 	error: "Failed to save product",
+		// });
 	}
 
 	return (
