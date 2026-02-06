@@ -19,6 +19,7 @@ import {
 	signinSchema,
 } from "@/features/auth/schemas/signin";
 import { useAuth } from "@/hooks/use-auth";
+import { useStores } from "@/hooks/use-stores";
 import { cn } from "@/lib/utils";
 
 export function LoginForm({
@@ -29,6 +30,7 @@ export function LoginForm({
 	const passwordId = useId();
 	const navigate = useNavigate();
 	const { signIn, isSigningIn } = useAuth();
+	const { stores } = useStores();
 	const [authError, setAuthError] = useState<string | null>(null);
 
 	const {
@@ -43,7 +45,20 @@ export function LoginForm({
 		setAuthError(null);
 		try {
 			await signIn(data);
-			navigate({ to: "/$store", params: { store: "default" } });
+			// Wait a bit for stores to load if not already loaded
+			const firstStore = stores.length > 0 ? stores[0] : null;
+			if (firstStore) {
+				navigate({
+					to: "/$store",
+					params: { store: firstStore.slug },
+				});
+			} else {
+				// Fallback if stores not loaded yet
+				navigate({
+					to: "/$store",
+					params: { store: "default" },
+				});
+			}
 		} catch (err) {
 			setAuthError(
 				err instanceof Error

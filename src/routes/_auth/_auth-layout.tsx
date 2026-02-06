@@ -1,14 +1,25 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
+import { getStoresAdapter } from "@/features/stores/adapters/get-stores";
 import { isAuthenticated } from "@/lib/auth-utils";
 
 export const Route = createFileRoute("/_auth/_auth-layout")({
 	beforeLoad: async () => {
 		const authenticated = await isAuthenticated();
 		if (authenticated) {
-			throw redirect({
-				to: "/$store",
-				params: { store: "default" },
-			});
+			const stores = await getStoresAdapter();
+			const firstStore = stores.length > 0 ? stores[0] : null;
+			if (firstStore) {
+				throw redirect({
+					to: "/$store",
+					params: { store: firstStore.slug },
+				});
+			} else {
+				// Fallback if no stores available
+				throw redirect({
+					to: "/$store",
+					params: { store: "default" },
+				});
+			}
 		}
 	},
 	component: RouteComponent,

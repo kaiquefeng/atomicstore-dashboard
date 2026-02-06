@@ -1,5 +1,6 @@
 "use client";
 
+import { useParams } from "@tanstack/react-router";
 import { ChevronsUpDown, Plus } from "lucide-react";
 import * as React from "react";
 
@@ -25,16 +26,41 @@ export function StoreSwitcher({
 	stores: {
 		id?: string;
 		name: string;
+		slug: string;
 		logo: React.ElementType;
 		plan: string;
 	}[];
 }) {
 	const { isMobile } = useSidebar();
-	const [activeStore, setActiveStore] = React.useState(stores[0]);
+	const params = useParams({ strict: false });
+	const currentSlug = params.store;
 
-	if (!activeStore) {
+	// Find active store based on current slug from URL
+	const activeStore = React.useMemo(
+		() => stores.find((store) => store.slug === currentSlug) || stores[0],
+		[stores, currentSlug],
+	);
+
+	if (!activeStore || stores.length === 0) {
 		return null;
 	}
+
+	const handleStoreSelect = (store: (typeof stores)[0]) => {
+		// Get current pathname and replace the store slug
+		const currentPath = window.location.pathname;
+		const pathParts = currentPath.split("/").filter(Boolean);
+
+		// Replace the first part (store slug) with the new slug
+		if (pathParts.length > 0) {
+			pathParts[0] = store.slug;
+		} else {
+			pathParts.push(store.slug);
+		}
+
+		const newPath = `/${pathParts.join("/")}`;
+		// Navigate to the new path with the store slug
+		window.location.href = newPath;
+	};
 
 	return (
 		<SidebarMenu>
@@ -67,7 +93,7 @@ export function StoreSwitcher({
 						{stores.map((store, index) => (
 							<DropdownMenuItem
 								key={store.id || store.name}
-								onClick={() => setActiveStore(store)}
+								onClick={() => handleStoreSelect(store)}
 								className="gap-2 p-2"
 							>
 								<div className="flex size-6 items-center justify-center rounded-md border">

@@ -1,5 +1,6 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { AppSidebar } from "@/components/app-sidebar";
+import { StoreSlugSync } from "@/components/store-slug-sync";
 import {
 	Breadcrumb,
 	BreadcrumbItem,
@@ -14,15 +15,34 @@ import {
 	SidebarProvider,
 	SidebarTrigger,
 } from "@/components/ui/sidebar";
+import { getStoresAdapter } from "@/features/stores/adapters/get-stores";
 import { isAuthenticated } from "@/lib/auth-utils";
+import { setStoreSlug } from "@/services/api";
 
 export const Route = createFileRoute("/$store/_layout")({
-	beforeLoad: async () => {
+	beforeLoad: async ({ params }) => {
 		const authenticated = await isAuthenticated();
 		if (!authenticated) {
 			throw redirect({
 				to: "/signin",
 			});
+		}
+
+		const stores = await getStoresAdapter();
+
+		const isValidStore = stores.some((store) => store.slug === params.store);
+
+		if (!isValidStore && stores.length > 0) {
+			const firstStore = stores[0];
+			throw redirect({
+				to: "/$store",
+				params: { store: firstStore.slug },
+			});
+		}
+
+		// Set the store slug in API client
+		if (isValidStore) {
+			setStoreSlug(params.store);
 		}
 	},
 	component: StoreDashboardLayout,
@@ -31,6 +51,7 @@ export const Route = createFileRoute("/$store/_layout")({
 function StoreDashboardLayout() {
 	return (
 		<SidebarProvider>
+			<StoreSlugSync />
 			<AppSidebar />
 			<SidebarInset>
 				<header className="bg-background sticky top-0 flex h-16 shrink-0 items-center gap-2 border-b px-4">
@@ -55,5 +76,5 @@ function StoreDashboardLayout() {
 				</div>
 			</SidebarInset>
 		</SidebarProvider>
-	)
+	);
 }

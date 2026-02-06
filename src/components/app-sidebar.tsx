@@ -9,7 +9,7 @@ import {
 	Truck,
 	UsersRound,
 } from "lucide-react";
-import type * as React from "react";
+import * as React from "react";
 
 import { NavMain } from "@/components/nav-main";
 import { NavProjects } from "@/components/nav-projects";
@@ -25,86 +25,84 @@ import { useAuth } from "@/hooks/use-auth";
 import { useStores } from "@/hooks/use-stores";
 import { StoreSwitcher } from "./store-switcher";
 
-// This is sample data.
-const data = {
-	user: {
-		name: "shadcn",
-		email: "m@example.com",
-		avatar: "/avatars/shadcn.jpg",
-	},
-	navMain: [
-		{
-			title: "Home",
-			url: "/$store",
-			icon: LayoutGrid,
-			isActive: true,
-			items: [],
-		},
-		{
-			title: "Minha loja",
-			url: "#",
-			icon: ShoppingBag,
-			items: [
-				{
-					title: "Produtos",
-					url: "/$store/products",
-				},
-				{
-					title: "Categorias",
-					url: "/$store/categories",
-				},
-				{
-					title: "Pedidos",
-					url: "/$store/orders",
-				},
-				{
-					title: "Tags",
-					url: "/$store/tags",
-				},
-				{
-					title: "Imagens",
-					url: "/$store/images",
-				},
-				{
-					title: "Cupons",
-					url: "/$store/coupons",
-				},
-			],
-		},
+export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+	const { user, signOut } = useAuth();
+	const { stores, isLoading: isLoadingStores } = useStores();
 
-		{
-			title: "Clientes",
-			url: "/customers",
-			icon: UsersRound,
-			items: [],
-		},
-		{
-			title: "Métodos de envio",
-			url: "/$store/settings/shipping",
-			icon: Truck,
-		},
-		{
-			title: "Configurações",
-			url: "#",
-			icon: Settings2,
-			items: [
-				{
-					title: "Geral",
-					url: "#",
-				},
+	const navMain = React.useMemo(() => {
+		return [
+			{
+				title: "Home",
+				url: "/",
+				icon: LayoutGrid,
+				isActive: true,
+				items: [],
+			},
+			{
+				title: "Minha loja",
+				url: "#",
+				icon: ShoppingBag,
+				items: [
+					{
+						title: "Produtos",
+						url: "/products",
+					},
+					{
+						title: "Categorias",
+						url: "/categories",
+					},
+					{
+						title: "Pedidos",
+						url: "/orders",
+					},
+					{
+						title: "Tags",
+						url: "/tags",
+					},
+					{
+						title: "Imagens",
+						url: "/images",
+					},
+					{
+						title: "Cupons",
+						url: "/coupons",
+					},
+				],
+			},
+			{
+				title: "Clientes",
+				url: "/customers",
+				icon: UsersRound,
+				items: [],
+			},
+			{
+				title: "Métodos de envio",
+				url: "/settings/shipping",
+				icon: Truck,
+			},
+			{
+				title: "Configurações",
+				url: "#",
+				icon: Settings2,
+				items: [
+					{
+						title: "Geral",
+						url: "#",
+					},
+					{
+						title: "Time",
+						url: "#",
+					},
+					{
+						title: "Cobrança",
+						url: "#",
+					},
+				],
+			},
+		];
+	}, []);
 
-				{
-					title: "Time",
-					url: "#",
-				},
-				{
-					title: "Cobrança",
-					url: "#",
-				},
-			],
-		},
-	],
-	projects: [
+	const projects = [
 		{
 			name: "Design Engineering",
 			url: "#",
@@ -115,12 +113,7 @@ const data = {
 			url: "#",
 			icon: PieChart,
 		},
-	],
-};
-
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-	const { user, signOut } = useAuth();
-	const { stores, isLoading: isLoadingStores } = useStores();
+	];
 
 	const userData = user
 		? {
@@ -148,8 +141,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 				) : null}
 			</SidebarHeader>
 			<SidebarContent>
-				<NavMain items={data.navMain} />
-				<NavProjects projects={data.projects} />
+				<NavMain items={navMain} />
+				<NavProjects projects={projects} />
 			</SidebarContent>
 			<SidebarFooter>
 				<NavUser user={userData} onSignOut={signOut} />

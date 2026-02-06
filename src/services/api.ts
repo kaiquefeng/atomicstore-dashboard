@@ -5,7 +5,6 @@ import axios, {
 } from "axios";
 import { auth } from "@/lib/auth";
 
-// Store the current store slug - will be updated by components
 let currentStoreSlug: string | undefined;
 
 export function setStoreSlug(slug: string | undefined) {
@@ -26,30 +25,25 @@ const apiClient: AxiosInstance = axios.create({
 
 apiClient.interceptors.request.use(
 	async (config: InternalAxiosRequestConfig) => {
-		const session = await auth.getSession();
+		try {
+			const session = await auth.getSession();
 
-		if (session.error || !session.data?.session) {
-			throw new Error("Not authenticated");
+			if (!session.error && session.data?.session) {
+				const token = session.data.session.token;
+
+				if (token && config.headers) {
+					config.headers.Authorization = `Bearer ${token}`;
+				}
+			}
+
+			// if (currentStoreSlug && config.headers) {
+			// 	config.headers["X-Store-Slug"] = currentStoreSlug;
+			// }
+
+			return config;
+		} catch {
+			return config;
 		}
-
-		const token = session.data.session.token;
-
-		if (token && config.headers) {
-			config.headers.Authorization = `Bearer ${token}`;
-		}
-
-		// Add store slug to requests if available
-		// Option 1: As header
-		if (currentStoreSlug && config.headers) {
-			config.headers["X-Store-Slug"] = currentStoreSlug;
-		}
-
-		// Option 2: As query parameter (uncomment if preferred)
-		// if (currentStoreSlug && config.params) {
-		//   config.params.store = currentStoreSlug;
-		// }
-
-		return config;
 	},
 	(error: AxiosError) => {
 		return Promise.reject(error);
