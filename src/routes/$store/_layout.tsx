@@ -1,4 +1,4 @@
-import { createFileRoute, Outlet } from "@tanstack/react-router";
+import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { AppSidebar } from "@/components/app-sidebar";
 import {
 	Breadcrumb,
@@ -14,8 +14,17 @@ import {
 	SidebarProvider,
 	SidebarTrigger,
 } from "@/components/ui/sidebar";
+import { isAuthenticated } from "@/lib/auth-utils";
 
 export const Route = createFileRoute("/$store/_layout")({
+	beforeLoad: async () => {
+		const authenticated = await isAuthenticated();
+		if (!authenticated) {
+			throw redirect({
+				to: "/signin",
+			});
+		}
+	},
 	component: StoreDashboardLayout,
 });
 
