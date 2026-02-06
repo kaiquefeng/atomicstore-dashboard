@@ -1,10 +1,7 @@
 "use client";
 
 import {
-	AudioWaveform,
-	Command,
 	Frame,
-	GalleryVerticalEnd,
 	LayoutGrid,
 	PieChart,
 	Settings2,
@@ -17,7 +14,6 @@ import type * as React from "react";
 import { NavMain } from "@/components/nav-main";
 import { NavProjects } from "@/components/nav-projects";
 import { NavUser } from "@/components/nav-user";
-import { TeamSwitcher } from "@/components/team-switcher";
 import {
 	Sidebar,
 	SidebarContent,
@@ -26,6 +22,8 @@ import {
 	SidebarRail,
 } from "@/components/ui/sidebar";
 import { useAuth } from "@/hooks/use-auth";
+import { useStores } from "@/hooks/use-stores";
+import { StoreSwitcher } from "./store-switcher";
 
 // This is sample data.
 const data = {
@@ -34,23 +32,6 @@ const data = {
 		email: "m@example.com",
 		avatar: "/avatars/shadcn.jpg",
 	},
-	teams: [
-		{
-			name: "Acme Inc",
-			logo: GalleryVerticalEnd,
-			plan: "Enterprise",
-		},
-		{
-			name: "Acme Corp.",
-			logo: AudioWaveform,
-			plan: "Startup",
-		},
-		{
-			name: "Evil Corp.",
-			logo: Command,
-			plan: "Free",
-		},
-	],
 	navMain: [
 		{
 			title: "Home",
@@ -139,6 +120,7 @@ const data = {
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 	const { user, signOut } = useAuth();
+	const { stores, isLoading: isLoadingStores } = useStores();
 
 	const userData = user
 		? {
@@ -155,7 +137,15 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 	return (
 		<Sidebar collapsible="icon" {...props}>
 			<SidebarHeader>
-				<TeamSwitcher teams={data.teams} />
+				{isLoadingStores ? (
+					<div className="flex h-16 items-center justify-center">
+						<span className="text-muted-foreground text-sm">
+							Carregando lojas...
+						</span>
+					</div>
+				) : stores.length > 0 ? (
+					<StoreSwitcher stores={stores} />
+				) : null}
 			</SidebarHeader>
 			<SidebarContent>
 				<NavMain items={data.navMain} />

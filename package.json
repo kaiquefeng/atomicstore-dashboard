@@ -36,10 +36,13 @@
     "@tabler/icons-react": "^3.36.1",
     "@tailwindcss/vite": "^4.0.6",
     "@tanstack/react-devtools": "^0.7.0",
+    "@tanstack/react-query": "^5.90.20",
     "@tanstack/react-router": "^1.157.16",
     "@tanstack/react-router-devtools": "^1.157.16",
     "@tanstack/react-table": "^8.21.3",
     "@tanstack/router-plugin": "^1.157.16",
+    "axios": "^1.13.4",
+    "better-auth": "^1.0.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.563.0",
@@ -52,8 +55,7 @@
     "tailwind-merge": "^3.4.0",
     "tailwindcss": "^4.0.6",
     "vaul": "^1.1.2",
-    "zod": "^4.3.6",
-    "better-auth": "^1.0.0"
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@biomejs/biome": "2.2.4",

@@ -1,7 +1,7 @@
 import { createAuthClient } from "better-auth/client";
 
 export const auth = createAuthClient({
-	baseURL: import.meta.env.VITE_AUTH_URL || "http://localhost:3000",
+	baseURL: import.meta.env.VITE_API_URL,
 	basePath: "/api/auth",
 });
 
