@@ -6,13 +6,13 @@ import {
 	IconChevronLeft,
 	IconChevronRight,
 	IconEdit,
+	IconLoader,
 	IconPlus,
 	IconTrash,
 	IconX,
 } from "@tabler/icons-react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import * as React from "react";
-
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -52,9 +52,19 @@ import {
 	VideoPreviewModal,
 	VideoThumbnail,
 } from "@/components/video-preview-modal";
+import type { ProductVariant as ApiProductVariant } from "@/features/products/adapters/create-product.adapter";
+import { useCreateProduct } from "@/features/products/hooks/use-create-product";
+import { useProductById } from "@/features/products/hooks/use-product-by-id";
+import { useUpdateProduct } from "@/features/products/hooks/use-update-product";
+import { generateBarcode, generateSKU } from "@/helpers/convert";
 
 export const Route = createFileRoute("/$store/_layout/products_/add")({
 	component: AddProductPage,
+	validateSearch: (search: Record<string, unknown>) => {
+		return {
+			edit: (search.edit as string | undefined) || undefined,
+		};
+	},
 });
 
 function VariantValueInput({
@@ -66,21 +76,40 @@ function VariantValueInput({
 }) {
 	const [value, setValue] = React.useState("");
 	const [isAdding, setIsAdding] = React.useState(false);
+	const inputRef = React.useRef<HTMLInputElement>(null);
 
-	function handleSubmit(e: React.FormEvent) {
-		e.preventDefault();
+	function handleSubmit(e?: React.FormEvent) {
+		if (e) {
+			e.preventDefault();
+		}
 		if (value.trim()) {
 			onAdd(value.trim());
+			setValue("");
+			setIsAdding(false);
+		} else {
+			setIsAdding(false);
+		}
+	}
+
+	function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+		if (e.key === "Enter") {
+			e.preventDefault();
+			handleSubmit();
+		} else if (e.key === "Escape") {
 			setValue("");
 			setIsAdding(false);
 		}
 	}
 
-	function handleKeyDown(e: React.KeyboardEvent) {
-		if (e.key === "Escape") {
-			setValue("");
-			setIsAdding(false);
-		}
+	function handleBlur() {
+		// Usar setTimeout para permitir que o onClick do botão seja processado primeiro
+		setTimeout(() => {
+			if (value.trim()) {
+				handleSubmit();
+			} else {
+				setIsAdding(false);
+			}
+		}, 200);
 	}
 
 	if (!isAdding) {
@@ -89,35 +118,40 @@ function VariantValueInput({
 				type="button"
 				variant="outline"
 				size="xs"
-				onClick={() => setIsAdding(true)}
+				onClick={() => {
+					setIsAdding(true);
+					// Focar no input após o estado ser atualizado
+					setTimeout(() => {
+						inputRef.current?.focus();
+					}, 0);
+				}}
 				className="border-dashed"
 			>
 				<IconPlus className="size-3" />
-				Add
+				Adicionar
 			</Button>
 		);
 	}
 
 	return (
-		<form onSubmit={handleSubmit} className="flex items-center gap-1">
+		<div className="flex items-center gap-1">
 			<Input
+				ref={inputRef}
 				autoFocus
 				value={value}
 				onChange={(e) => setValue(e.target.value)}
 				onKeyDown={handleKeyDown}
-				onBlur={() => {
-					if (!value.trim()) setIsAdding(false);
-				}}
+				onBlur={handleBlur}
 				placeholder={
-					optionName === "Size"
-						? "e.g., XL"
-						: optionName === "Color"
-							? "e.g., Red"
-							: "Value"
+					optionName === "Size" || optionName === "Tamanho"
+						? "Ex: XL"
+						: optionName === "Color" || optionName === "Cor"
+							? "Ex: Vermelho"
+							: "Valor"
 				}
 				className="h-6 w-20 px-2 text-xs"
 			/>
-		</form>
+		</div>
 	);
 }
 
@@ -165,55 +199,40 @@ interface VideoItem {
 }
 
 function AddProductPage() {
-	// const navigate = useNavigate();
+	const navigate = useNavigate();
 	const { store } = Route.useParams();
+	const { edit: productId } = Route.useSearch();
+	const isEditMode = !!productId;
 
-	const [title, setTitle] = React.useState("Camiseta Básica");
-	const [description, setDescription] = React.useState(
-		"Camiseta básica de algodão 100%. Confortável e versátil, perfeita para o dia a dia.",
+	const { data: productData, isLoading: isLoadingProduct } = useProductById(
+		productId as string | number | undefined,
 	);
-	const [category, setCategory] = React.useState("clothing");
-	const [stock, setStock] = React.useState("150");
-	const [weight, setWeight] = React.useState("150");
-	const [height, setHeight] = React.useState("50");
-	const [width, setWidth] = React.useState("250");
-	const [length, setLength] = React.useState("300");
-	const [status, setStatus] = React.useState("active");
-	const [tags, setTags] = React.useState("camiseta, básica, algodão, casual");
+
+	const { mutate: createProduct, isPending: isCreating } = useCreateProduct();
+	const { mutate: updateProduct, isPending: isUpdating } = useUpdateProduct();
+	const isPending = isCreating || isUpdating;
+
+	const [title, setTitle] = React.useState("");
+	const [description, setDescription] = React.useState("");
+	const [category, setCategory] = React.useState("");
+	const [stock, setStock] = React.useState("");
+	const [weight, setWeight] = React.useState("");
+	const [height, setHeight] = React.useState("");
+	const [width, setWidth] = React.useState("");
+	const [length, setLength] = React.useState("");
+	const [status, setStatus] = React.useState("draft");
+	const [tags, setTags] = React.useState("");
 
 	// Product variants with individual pricing
 	const [productVariants, setProductVariants] = React.useState<
 		ProductVariant[]
 	>([]);
 
-	const [productImages, setProductImages] = React.useState<ProductImage[]>([
-		{
-			id: "1",
-			file: null,
-			preview:
-				"https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400&h=400&fit=crop",
-			name: "Front View",
-		},
-		{
-			id: "2",
-			file: null,
-			preview:
-				"https://images.unsplash.com/photo-1618354691373-d851c5c3a990?w=400&h=400&fit=crop",
-			name: "Back View",
-		},
-		{
-			id: "3",
-			file: null,
-			preview:
-				"https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?w=400&h=400&fit=crop",
-			name: "Detail Shot",
-		},
-	]);
+	const [productImages, setProductImages] = React.useState<ProductImage[]>([]);
 
-	const [variantOptions, setVariantOptions] = React.useState<VariantOption[]>([
-		{ id: "1", name: "Color", values: ["Amarelo", "Azul", "Azul claro"] },
-		{ id: "2", name: "Size", values: ["PP", "P", "M"] },
-	]);
+	const [variantOptions, setVariantOptions] = React.useState<VariantOption[]>(
+		[],
+	);
 
 	// State for image picker drawer
 	const [imagePickerVariantId, setImagePickerVariantId] = React.useState<
@@ -223,22 +242,7 @@ function AddProductPage() {
 	// State for variant edit drawer
 	const [editVariantId, setEditVariantId] = React.useState<string | null>(null);
 
-	const [categoryVideos, setCategoryVideos] = React.useState<VideoItem[]>([
-		{
-			id: "1",
-			url: "https://youtube.com/watch?v=dQw4w9WgXcQ",
-			title: "Product Overview",
-			thumbnail:
-				"https://images.unsplash.com/photo-1564349683136-77e08dba1ef7?w=300&h=400&fit=crop",
-		},
-		{
-			id: "2",
-			url: "https://youtube.com/watch?v=jNQXAC9IVRw",
-			title: "How to Use",
-			thumbnail:
-				"https://images.unsplash.com/photo-1433086966358-54859d0ed716?w=300&h=400&fit=crop",
-		},
-	]);
+	const [categoryVideos, setCategoryVideos] = React.useState<VideoItem[]>([]);
 
 	const [previewVideo, setPreviewVideo] = React.useState<VideoItem | null>(
 		null,
@@ -247,6 +251,186 @@ function AddProductPage() {
 
 	const [isDragging, setIsDragging] = React.useState(false);
 	const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+	// Carregar dados do produto quando estiver em modo de edição
+	React.useEffect(() => {
+		if (isEditMode && productData) {
+			// Campos básicos
+			setTitle(productData.title || productData.name || "");
+			setDescription((productData.description as string) || "");
+			setStatus((productData.status as string) || "draft");
+			setCategory((productData.category as string) || "");
+			setTags((productData.tags as string) || "");
+
+			// Carregar propriedades (properties) de metadata.properties
+			const metadata = productData.metadata as
+				| {
+						properties?: Array<{
+							title: string;
+							options: string[];
+						}>;
+				  }
+				| undefined;
+			if (metadata?.properties && Array.isArray(metadata.properties)) {
+				const loadedVariantOptions: VariantOption[] = metadata.properties.map(
+					(prop, index) => ({
+						id: `property-${Date.now()}-${index}`,
+						name: prop.title,
+						values: prop.options || [],
+					}),
+				);
+				setVariantOptions(loadedVariantOptions);
+			}
+
+			// Carregar imagens
+			const images = productData.images || [];
+			if (images.length > 0 || productData.image) {
+				const imageArray = Array.isArray(images) ? images : [productData.image];
+				const loadedImages: ProductImage[] = imageArray
+					.filter((img) => {
+						// Filtrar imagens válidas (string ou objeto com url)
+						if (!img) return false;
+						if (typeof img === "string") return !!img;
+						const imgObj = img as unknown as { url?: string; id?: string };
+						return !!imgObj?.url;
+					})
+					.map((img, index) => {
+						// Se for string, tratar como URL simples
+						if (typeof img === "string") {
+							return {
+								id: `loaded-${index}`,
+								file: null,
+								preview: img,
+								name: `Imagem ${index + 1}`,
+							};
+						}
+						// Se for objeto, extrair id, url, alt e sortOrder
+						const imgObj = img as unknown as {
+							id?: string;
+							url?: string;
+							alt?: string;
+							sortOrder?: number;
+						};
+						return {
+							id: imgObj.id || `loaded-${index}`,
+							file: null,
+							preview: imgObj.url || "",
+							name: imgObj.alt || `Imagem ${index + 1}`,
+						};
+					});
+				setProductImages(loadedImages);
+			}
+
+			// Carregar variações
+			const variants = (productData.variants ||
+				productData.defaultVariant ||
+				[]) as unknown[];
+			if (variants.length > 0) {
+				const loadedVariants: ProductVariant[] = variants.map(
+					(variant: any, index) => {
+						const isDefault = variant.isDefault || index === 0;
+						return {
+							id: variant.id || `variant-${index}`,
+							sku: variant.sku || "",
+							priceBrl: variant.priceBrl
+								? String(variant.priceBrl)
+								: variant.price
+									? String(variant.price)
+									: "",
+							compareAtBrl: variant.compareAtPriceBrl
+								? String(variant.compareAtPriceBrl)
+								: variant.compareAtPrice
+									? String(variant.compareAtPrice)
+									: "",
+							costBrl: variant.costBrl
+								? String(variant.costBrl)
+								: variant.cost
+									? String(variant.cost)
+									: "",
+							title: variant.title || `Variação ${index + 1}`,
+							barcode: variant.barcode || "",
+							isDefault,
+							stock: variant.stock ? String(variant.stock) : "",
+							showPrice: variant.showPrice !== false,
+							weightKg: variant.weightKg
+								? String(variant.weightKg)
+								: variant.weight
+									? String(variant.weight)
+									: "",
+							lengthCm: variant.lengthCm
+								? String(variant.lengthCm)
+								: variant.length
+									? String(variant.length)
+									: "",
+							widthCm: variant.widthCm
+								? String(variant.widthCm)
+								: variant.width
+									? String(variant.width)
+									: "",
+							heightCm: variant.heightCm
+								? String(variant.heightCm)
+								: variant.height
+									? String(variant.height)
+									: "",
+							imageId: variant.imageId || undefined,
+							metadata: variant.metadata || {},
+						};
+					},
+				);
+				setProductVariants(loadedVariants);
+			} else if (productData.defaultVariant) {
+				// Se não houver array de variants mas houver defaultVariant
+				const defaultVariant = productData.defaultVariant as any;
+				const loadedVariant: ProductVariant = {
+					id: "default-variant",
+					sku: defaultVariant.sku || "",
+					priceBrl: defaultVariant.priceBrl
+						? String(defaultVariant.priceBrl)
+						: defaultVariant.price
+							? String(defaultVariant.price)
+							: "",
+					compareAtBrl: defaultVariant.compareAtPriceBrl
+						? String(defaultVariant.compareAtPriceBrl)
+						: "",
+					costBrl: defaultVariant.costBrl ? String(defaultVariant.costBrl) : "",
+					title: "Variação Padrão",
+					barcode: defaultVariant.barcode || "",
+					isDefault: true,
+					stock: defaultVariant.stock ? String(defaultVariant.stock) : "",
+					showPrice: true,
+					weightKg: defaultVariant.weightKg
+						? String(defaultVariant.weightKg)
+						: "",
+					lengthCm: defaultVariant.lengthCm
+						? String(defaultVariant.lengthCm)
+						: "",
+					widthCm: defaultVariant.widthCm ? String(defaultVariant.widthCm) : "",
+					heightCm: defaultVariant.heightCm
+						? String(defaultVariant.heightCm)
+						: "",
+					metadata: defaultVariant.metadata || {},
+				};
+				setProductVariants([loadedVariant]);
+			}
+
+			// Carregar dimensões e peso (se disponíveis no produto)
+			if (productData.weight) {
+				setWeight(String(productData.weight));
+			}
+			if (productData.height) {
+				setHeight(String(productData.height));
+			}
+			if (productData.width) {
+				setWidth(String(productData.width));
+			}
+			if (productData.length) {
+				setLength(String(productData.length));
+			}
+			if (productData.stock) {
+				setStock(String(productData.stock));
+			}
+		}
+	}, [isEditMode, productData]);
 
 	function handleDragOver(e: React.DragEvent) {
 		e.preventDefault();
@@ -345,16 +529,42 @@ function AddProductPage() {
 		setCategoryVideos((prev) => prev.filter((v) => v.id !== id));
 	}
 
+	// Gerar SKU e barcode automaticamente quando o título mudar (apenas para variações sem SKU/barcode)
+	React.useEffect(() => {
+		if (title.trim() && productVariants.length > 0) {
+			setProductVariants((prev) =>
+				prev.map((variant, index) => {
+					const updates: Partial<ProductVariant> = {};
+
+					// Só atualiza SKU se estiver vazio
+					if (!variant.sku || variant.sku.trim() === "") {
+						updates.sku = generateSKU(title, index);
+					}
+
+					// Só atualiza barcode se estiver vazio
+					if (!variant.barcode || variant.barcode.trim() === "") {
+						updates.barcode = generateBarcode(index);
+					}
+
+					return Object.keys(updates).length > 0
+						? { ...variant, ...updates }
+						: variant;
+				}),
+			);
+		}
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [title, productVariants.length]);
+
 	// Product Variant Management
 	function addProductVariant() {
 		const newVariant: ProductVariant = {
 			id: `${Date.now()}`,
-			sku: "",
+			sku: title.trim() ? generateSKU(title, productVariants.length) : "",
 			priceBrl: "",
 			compareAtBrl: "",
 			costBrl: "",
 			title: `Nova Variação ${productVariants.length + 1}`,
-			barcode: "",
+			barcode: generateBarcode(productVariants.length),
 			isDefault: productVariants.length === 0,
 			stock: "",
 			showPrice: true,
@@ -419,12 +629,12 @@ function AddProductPage() {
 				for (const size of sizeOption.values) {
 					newVariants.push({
 						id: `${Date.now()}-${counter}`,
-						sku: "",
+						sku: title.trim() ? generateSKU(title, counter - 1) : "",
 						priceBrl: "",
 						compareAtBrl: "",
 						costBrl: "",
 						title: `${color} ${size}`,
-						barcode: "",
+						barcode: generateBarcode(counter - 1),
 						isDefault: counter === 1,
 						stock: "",
 						showPrice: true,
@@ -444,12 +654,12 @@ function AddProductPage() {
 				for (const value of option.values) {
 					newVariants.push({
 						id: `${Date.now()}-${counter}`,
-						sku: "",
+						sku: title.trim() ? generateSKU(title, counter - 1) : "",
 						priceBrl: "",
 						compareAtBrl: "",
 						costBrl: "",
 						title: value,
-						barcode: "",
+						barcode: generateBarcode(counter - 1),
 						isDefault: counter === 1,
 						stock: "",
 						showPrice: true,
@@ -472,14 +682,154 @@ function AddProductPage() {
 	function handleSubmit(e: React.FormEvent) {
 		e.preventDefault();
 
-		// toast.promise(new Promise((resolve) => setTimeout(resolve, 1500)), {
-		// 	loading: "Saving product...",
-		// 	success: () => {
-		// 		navigate({ to: "/$store/products", params: { store } });
-		// 		return "Product saved successfully!";
-		// 	},
-		// 	error: "Failed to save product",
-		// });
+		// Validar título
+		if (!title.trim()) {
+			return;
+		}
+
+		// Converter variantOptions para properties no formato esperado pela API
+		const properties = variantOptions
+			.filter((option) => option.values.length > 0)
+			.map((option) => ({
+				title: option.name,
+				options: option.values,
+			}));
+
+		// Filtrar apenas imagens com arquivo (novas imagens para upload)
+		const imageFiles = productImages
+			.filter((img) => img.file !== null)
+			.map((img) => img.file as File);
+
+		// Obter referências das imagens existentes (sem arquivo)
+		// Incluir id, url, alt e sortOrder baseado na ordem das imagens
+		// Usar apenas imagens que têm id válido (não são temporárias)
+		const existingImageReferences = productImages
+			.filter(
+				(img) => img.file === null && img.id && !img.id.startsWith("loaded-"),
+			)
+			.map((img, index) => ({
+				id: img.id,
+				url: img.preview,
+				alt: img.name || "",
+				sortOrder: index,
+			}));
+
+		// Validar que há pelo menos uma variação
+		if (productVariants.length === 0) {
+			throw new Error(
+				"É necessário criar pelo menos uma variação com SKU, Preço e Código de barras",
+			);
+		}
+
+		// Converter productVariants para o formato de variants esperado pela API
+		const variants: ApiProductVariant[] = productVariants.map((variant) => {
+			const priceBrlValue = variant.priceBrl
+				? parseFloat(variant.priceBrl.replace(/[^\d.,]/g, "").replace(",", "."))
+				: 0;
+
+			if (!variant.sku || variant.sku.trim() === "") {
+				throw new Error(
+					`SKU é obrigatório para a variação: ${variant.title || "Sem título"}`,
+				);
+			}
+
+			if (!priceBrlValue || priceBrlValue <= 0) {
+				throw new Error(
+					`Preço deve ser maior que zero para a variação: ${variant.title || "Sem título"}`,
+				);
+			}
+
+			if (!variant.barcode || variant.barcode.trim() === "") {
+				throw new Error(
+					`Código de barras é obrigatório para a variação: ${variant.title || "Sem título"}`,
+				);
+			}
+
+			const variantData: ApiProductVariant = {
+				sku: variant.sku.trim(),
+				priceBrl: priceBrlValue,
+				title: variant.title || "",
+				barcode: variant.barcode.trim(),
+				isDefault: variant.isDefault,
+				compareAtBrl: variant.compareAtBrl
+					? parseFloat(
+							variant.compareAtBrl.replace(/[^\d.,]/g, "").replace(",", "."),
+						)
+					: undefined,
+				metadata:
+					variant.metadata && Object.keys(variant.metadata).length > 0
+						? (variant.metadata as Record<string, string | undefined>)
+						: undefined,
+			};
+
+			// Remover campos undefined
+			Object.keys(variantData).forEach((key) => {
+				if (
+					variantData[key as keyof typeof variantData] === undefined &&
+					key !== "isDefault"
+				) {
+					delete variantData[key as keyof typeof variantData];
+				}
+			});
+
+			return variantData;
+		});
+
+		// Garantir que pelo menos uma variant tenha isDefault: true
+		const hasDefault = variants.some((v) => v.isDefault);
+		if (!hasDefault && variants.length > 0) {
+			variants[0].isDefault = true;
+		}
+
+		if (isEditMode && productId) {
+			updateProduct(
+				{
+					id: productId as string | number,
+					title: title.trim(),
+					description: description || undefined,
+					status: status as "draft" | "active" | "archived",
+					variants,
+					images: imageFiles,
+					existingImageIds: existingImageReferences,
+					properties: properties.length > 0 ? properties : undefined,
+				},
+				{
+					onSuccess: () => {
+						navigate({
+							to: "/$store/products",
+							params: { store },
+						});
+					},
+				},
+			);
+		} else {
+			createProduct(
+				{
+					title: title.trim(),
+					description: description || undefined,
+					status: status as "draft" | "active" | "archived",
+					variants,
+					images: imageFiles,
+					properties: properties.length > 0 ? properties : undefined,
+				},
+				{
+					onSuccess: () => {
+						navigate({
+							to: "/$store/products",
+							params: { store },
+						});
+					},
+				},
+			);
+		}
+	}
+
+	if (isEditMode && isLoadingProduct) {
+		return (
+			<div className="flex items-center justify-center h-64">
+				<IconLoader className="size-6 animate-spin text-muted-foreground" />
+			</div>
+		);
 	}
 
 	return (
@@ -493,17 +843,29 @@ function AddProductPage() {
 					</Link>
 				</Button>
 				<div className="flex-1">
-					<h1 className="text-2xl font-bold tracking-tight">Add New Product</h1>
+					<h1 className="text-2xl font-bold tracking-tight">
+						{isEditMode ? "Editar Produto" : "Adicionar Novo Produto"}
+					</h1>
 					<p className="text-muted-foreground text-sm">
-						Create a new product listing for your store
+						{isEditMode
+							? "Edite as informações do produto"
+							: "Crie uma nova listagem de produto para sua loja"}
 					</p>
 				</div>
-				<Badge
-					variant="outline"
-					className="text-emerald-600 border-emerald-200 bg-emerald-50"
-				>
-					Draft
-				</Badge>
+				{isLoadingProduct ? (
+					<Badge variant="outline">Carregando...</Badge>
+				) : (
+					<Badge
+						variant="outline"
+						className="text-emerald-600 border-emerald-200 bg-emerald-50"
+					>
+						{status === "draft"
+							? "Rascunho"
+							: status === "active"
+								? "Ativo"
+								: "Arquivado"}
+					</Badge>
+				)}
 			</div>
 
 			<form onSubmit={handleSubmit} className="space-y-8">
@@ -514,56 +876,57 @@ function AddProductPage() {
 							<span className="flex size-6 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">
 								1
 							</span>
-							Basic Information
+							Informações Básicas
 						</CardTitle>
 						<CardDescription>
-							Start with the essential details about your product
+							Comece com os detalhes essenciais do seu produto
 						</CardDescription>
 					</CardHeader>
 					<CardContent className="space-y-6">
 						<div className="space-y-2">
-							<Label htmlFor="title">Product Title</Label>
+							<Label htmlFor="title">Título do Produto</Label>
 							<Input
 								id="title"
-								placeholder="e.g., Send It Premium Backpack"
+								placeholder="Ex: Mochila Premium"
 								value={title}
 								onChange={(e) => setTitle(e.target.value)}
 								className="text-lg font-medium"
 							/>
 							<p className="text-muted-foreground text-xs">
-								Choose a title that clearly describes your product
+								Escolha um título que descreva claramente seu produto
 							</p>
 						</div>
 
 						<div className="space-y-2">
-							<Label htmlFor="description">Description</Label>
+							<Label htmlFor="description">Descrição</Label>
 							<Textarea
 								id="description"
-								placeholder="Describe your product in detail..."
+								placeholder="Descreva seu produto em detalhes..."
 								value={description}
 								onChange={(e) => setDescription(e.target.value)}
 								className="min-h-[160px] resize-y"
 							/>
 							<p className="text-muted-foreground text-xs">
-								Include key features, materials, dimensions, and use cases
+								Inclua características principais, materiais, dimensões e casos
+								de uso
 							</p>
 						</div>
 
 						<Separator />
 
 						<div className="space-y-2">
-							<Label htmlFor="category">Category</Label>
+							<Label htmlFor="category">Categoria</Label>
 							<Select value={category} onValueChange={setCategory}>
 								<SelectTrigger id="category" className="w-full">
-									<SelectValue placeholder="Select a category" />
+									<SelectValue placeholder="Selecione uma categoria" />
 								</SelectTrigger>
 								<SelectContent>
-									<SelectItem value="bags">Bags & Backpacks</SelectItem>
-									<SelectItem value="electronics">Electronics</SelectItem>
-									<SelectItem value="clothing">Clothing</SelectItem>
-									<SelectItem value="accessories">Accessories</SelectItem>
-									<SelectItem value="outdoor">Outdoor & Adventure</SelectItem>
-									<SelectItem value="home">Home & Living</SelectItem>
+									<SelectItem value="bags">Bolsas e Mochilas</SelectItem>
+									<SelectItem value="electronics">Eletrônicos</SelectItem>
+									<SelectItem value="clothing">Roupas</SelectItem>
+									<SelectItem value="accessories">Acessórios</SelectItem>
+									<SelectItem value="outdoor">Ar Livre e Aventura</SelectItem>
+									<SelectItem value="home">Casa e Decoração</SelectItem>
 								</SelectContent>
 							</Select>
 						</div>
@@ -572,12 +935,12 @@ function AddProductPage() {
 							<Label htmlFor="tags">Tags</Label>
 							<Input
 								id="tags"
-								placeholder="adventure, travel, backpack"
+								placeholder="aventura, viagem, mochila"
 								value={tags}
 								onChange={(e) => setTags(e.target.value)}
 							/>
 							<p className="text-muted-foreground text-xs">
-								Separate tags with commas for better discoverability
+								Separe as tags com vírgulas para melhor descoberta
 							</p>
 						</div>
 					</CardContent>
@@ -616,7 +979,6 @@ function AddProductPage() {
 							onDrop={handleDrop}
 						>
 							<div className="flex flex-wrap gap-3">
-								{/* Existing Images */}
 								{productImages.map((image, index) => (
 									<div
 										key={image.id}
@@ -1488,7 +1850,9 @@ function AddProductPage() {
 
 									<DrawerFooter className="border-t">
 										<DrawerClose asChild>
-											<Button>Salvar</Button>
+											<Button disabled={isPending}>
+												{isPending ? "Salvando..." : "Salvar"}
+											</Button>
 										</DrawerClose>
 									</DrawerFooter>
 								</>
@@ -1514,7 +1878,7 @@ function AddProductPage() {
 						{/* Stock & Status */}
 						<div className="grid grid-cols-2 gap-4">
 							<div className="space-y-2">
-								<Label htmlFor="stock">Stock Quantity</Label>
+								<Label htmlFor="stock">Quantidade em Estoque</Label>
 								<Input
 									id="stock"
 									type="number"
@@ -1525,28 +1889,28 @@ function AddProductPage() {
 							</div>
 
 							<div className="space-y-2">
-								<Label htmlFor="status">Product Status</Label>
+								<Label htmlFor="status">Status do Produto</Label>
 								<Select value={status} onValueChange={setStatus}>
 									<SelectTrigger id="status" className="w-full">
-										<SelectValue placeholder="Select status" />
+										<SelectValue placeholder="Selecione o status" />
 									</SelectTrigger>
 									<SelectContent>
 										<SelectItem value="draft">
 											<div className="flex items-center gap-2">
 												<span className="size-2 rounded-full bg-yellow-500" />
-												Draft
+												Rascunho
 											</div>
 										</SelectItem>
 										<SelectItem value="active">
 											<div className="flex items-center gap-2">
 												<span className="size-2 rounded-full bg-emerald-500" />
-												Active
+												Ativo
 											</div>
 										</SelectItem>
 										<SelectItem value="archived">
 											<div className="flex items-center gap-2">
 												<span className="size-2 rounded-full bg-gray-500" />
-												Archived
+												Arquivado
 											</div>
 										</SelectItem>
 									</SelectContent>
@@ -1565,14 +1929,14 @@ function AddProductPage() {
 									</span>
 								</div>
 								<Label className="text-sm font-semibold">
-									Dimensions & Weight
+									Dimensões e Peso
 								</Label>
 							</div>
 
 							<div className="space-y-4">
 								<div className="space-y-2">
 									<Label htmlFor="weight" className="text-xs">
-										Weight (grams)
+										Peso (gramas)
 									</Label>
 									<div className="relative">
 										<Input
@@ -1589,14 +1953,14 @@ function AddProductPage() {
 										</span>
 									</div>
 									<p className="text-muted-foreground text-xs">
-										Used for shipping calculations
+										Usado para cálculos de frete
 									</p>
 								</div>
 
 								<div className="grid grid-cols-3 gap-3">
 									<div className="space-y-2">
 										<Label htmlFor="height" className="text-xs">
-											Height (cm)
+											Altura (cm)
 										</Label>
 										<div className="relative">
 											<Input
@@ -1616,7 +1980,7 @@ function AddProductPage() {
 
 									<div className="space-y-2">
 										<Label htmlFor="width" className="text-xs">
-											Width (cm)
+											Largura (cm)
 										</Label>
 										<div className="relative">
 											<Input
@@ -1636,7 +2000,7 @@ function AddProductPage() {
 
 									<div className="space-y-2">
 										<Label htmlFor="length" className="text-xs">
-											Length (cm)
+											Comprimento (cm)
 										</Label>
 										<div className="relative">
 											<Input
@@ -1655,7 +2019,7 @@ function AddProductPage() {
 									</div>
 								</div>
 								<p className="text-muted-foreground text-xs">
-									Product dimensions for packaging and shipping
+									Dimensões do produto para embalagem e envio
 								</p>
 							</div>
 						</div>
@@ -1666,11 +2030,19 @@ function AddProductPage() {
 				<div className="sticky bottom-0 -mx-4 flex items-center justify-end gap-3 border-t bg-background/95 px-4 py-4 backdrop-blur supports-backdrop-filter:bg-background/60">
 					<Button type="button" variant="outline" asChild>
 						<Link to="/$store/products" params={{ store }}>
-							Cancel
+							Cancelar
 						</Link>
 					</Button>
-					<Button type="submit" className="min-w-[140px]">
-						Save Product
+					<Button
+						type="submit"
+						className="min-w-[140px]"
+						disabled={isPending || isLoadingProduct}
+					>
+						{isPending
+							? "Salvando..."
+							: isEditMode
+								? "Atualizar Produto"
+								: "Salvar Produto"}
 					</Button>
 				</div>
 			</form>

@@ -29,7 +29,6 @@ import {
 	IconLayoutColumns,
 	IconLoader,
 	IconPlus,
-	IconTrendingUp,
 } from "@tabler/icons-react";
 import { Link, useParams } from "@tanstack/react-router";
 import {
@@ -48,28 +47,11 @@ import {
 	type VisibilityState,
 } from "@tanstack/react-table";
 import * as React from "react";
-import { Area, AreaChart, CartesianGrid, XAxis } from "recharts";
 // import { toast } from "sonner";
 import { z } from "zod";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-	type ChartConfig,
-	ChartContainer,
-	ChartTooltip,
-	ChartTooltipContent,
-} from "@/components/ui/chart";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-	Drawer,
-	DrawerClose,
-	DrawerContent,
-	DrawerDescription,
-	DrawerFooter,
-	DrawerHeader,
-	DrawerTitle,
-	DrawerTrigger,
-} from "@/components/ui/drawer";
 import {
 	DropdownMenu,
 	DropdownMenuCheckboxItem,
@@ -78,7 +60,6 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
 	Select,
@@ -87,7 +68,6 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
 import {
 	Table,
 	TableBody,
@@ -97,22 +77,19 @@ import {
 	TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useIsMobile } from "@/hooks/use-mobile";
 
 export const schema = z.object({
-	id: z.number(),
-	header: z.string(),
-	type: z.string(),
+	id: z.union([z.string(), z.number()]),
+	image: z.string().optional(),
+	title: z.string(),
+	slug: z.string(),
 	status: z.string(),
-	target: z.string(),
-	limit: z.string(),
-	reviewer: z.string(),
 });
 
 // Create a separate component for the drag handle
-function DragHandle({ id }: { id: number }) {
+function DragHandle({ id }: { id: string | number }) {
 	const { attributes, listeners } = useSortable({
-		id,
+		id: String(id),
 	});
 
 	return (
@@ -126,6 +103,78 @@ function DragHandle({ id }: { id: number }) {
 			<IconGripVertical className="text-muted-foreground size-3" />
 			<span className="sr-only">Drag to reorder</span>
 		</Button>
+	);
+}
+
+function ProductStatusBadge({ status }: { status: string }) {
+	const statusLower = status?.toLowerCase() || "";
+
+	const statusConfig: Record<
+		string,
+		{ className: string; label: string; icon?: React.ReactNode }
+	> = {
+		active: {
+			className:
+				"bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-50 dark:bg-emerald-950 dark:text-emerald-400 dark:border-emerald-800",
+			label: "Ativo",
+			icon: (
+				<IconCircleCheckFilled className="fill-emerald-500 dark:fill-emerald-400" />
+			),
+		},
+		inactive: {
+			className:
+				"bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-400 dark:border-slate-700",
+			label: "Inativo",
+		},
+		draft: {
+			className:
+				"bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-50 dark:bg-amber-950 dark:text-amber-400 dark:border-amber-800",
+			label: "Rascunho",
+		},
+		published: {
+			className:
+				"bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-50 dark:bg-emerald-950 dark:text-emerald-400 dark:border-emerald-800",
+			label: "Publicado",
+			icon: (
+				<IconCircleCheckFilled className="fill-emerald-500 dark:fill-emerald-400" />
+			),
+		},
+		archived: {
+			className:
+				"bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-400 dark:border-slate-700",
+			label: "Arquivado",
+		},
+		"out of stock": {
+			className:
+				"bg-red-50 text-red-700 border-red-200 hover:bg-red-50 dark:bg-red-950 dark:text-red-400 dark:border-red-800",
+			label: "Sem Estoque",
+		},
+		"in stock": {
+			className:
+				"bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-50 dark:bg-emerald-950 dark:text-emerald-400 dark:border-emerald-800",
+			label: "Em Estoque",
+			icon: (
+				<IconCircleCheckFilled className="fill-emerald-500 dark:fill-emerald-400" />
+			),
+		},
+		disabled: {
+			className:
+				"bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-400 dark:border-slate-700",
+			label: "Desabilitado",
+		},
+	};
+
+	const config = statusConfig[statusLower] ||
+		statusConfig[status] || {
+			className: "bg-muted text-muted-foreground border-border",
+			label: status || "Desconhecido",
+		};
+
+	return (
+		<Badge variant="outline" className={config.className}>
+			{config.icon}
+			{config.label}
+		</Badge>
 	);
 }
 
@@ -162,151 +211,96 @@ const columns: ColumnDef<z.infer<typeof schema>>[] = [
 		enableHiding: false,
 	},
 	{
-		accessorKey: "header",
-		header: "Header",
+		accessorKey: "image",
+		header: "Imagem",
+		cell: ({ row }) => {
+			const imageUrl = row.original.image;
+			return (
+				<div className="flex items-center">
+					{imageUrl ? (
+						<img
+							src={imageUrl}
+							alt={row.original.title}
+							className="size-10 rounded-md object-cover"
+						/>
+					) : (
+						<div className="flex size-10 items-center justify-center rounded-md bg-muted">
+							<IconLoader className="size-4 text-muted-foreground" />
+						</div>
+					)}
+				</div>
+			);
+		},
+		enableHiding: false,
+	},
+	{
+		accessorKey: "title",
+		header: "Título",
 		cell: ({ row }) => {
 			return <TableCellViewer item={row.original} />;
 		},
 		enableHiding: false,
 	},
 	{
-		accessorKey: "type",
-		header: "Section Type",
-		cell: ({ row }) => (
-			<div className="w-32">
-				<Badge variant="outline" className="text-muted-foreground px-1.5">
-					{row.original.type}
-				</Badge>
-			</div>
-		),
-	},
-	{
-		accessorKey: "status",
-		header: "Status",
-		cell: ({ row }) => (
-			<Badge variant="outline" className="text-muted-foreground px-1.5">
-				{row.original.status === "Done" ? (
-					<IconCircleCheckFilled className="fill-green-500 dark:fill-green-400" />
-				) : (
-					<IconLoader />
-				)}
-				{row.original.status}
-			</Badge>
-		),
-	},
-	{
-		accessorKey: "target",
-		header: () => <div className="w-full text-right">Target</div>,
-		cell: ({ row }) => (
-			<form
-				onSubmit={(e) => {
-					e.preventDefault();
-					// toast.promise(new Promise((resolve) => setTimeout(resolve, 1000)), {
-					// 	loading: `Saving ${row.original.header}`,
-					// 	success: "Done",
-					// 	error: "Error",
-					// });
-				}}
-			>
-				<Label htmlFor={`${row.original.id}-target`} className="sr-only">
-					Target
-				</Label>
-				<Input
-					className="hover:bg-input/30 focus-visible:bg-background dark:hover:bg-input/30 dark:focus-visible:bg-input/30 h-8 w-16 border-transparent bg-transparent text-right shadow-none focus-visible:border dark:bg-transparent"
-					defaultValue={row.original.target}
-					id={`${row.original.id}-target`}
-				/>
-			</form>
-		),
-	},
-	{
-		accessorKey: "limit",
-		header: () => <div className="w-full text-right">Limit</div>,
-		cell: ({ row }) => (
-			<form
-				onSubmit={(e) => {
-					e.preventDefault();
-					// toast.promise(new Promise((resolve) => setTimeout(resolve, 1000)), {
-					// 	loading: `Saving ${row.original.header}`,
-					// 	success: "Done",
-					// 	error: "Error",
-					// });
-				}}
-			>
-				<Label htmlFor={`${row.original.id}-limit`} className="sr-only">
-					Limit
-				</Label>
-				<Input
-					className="hover:bg-input/30 focus-visible:bg-background dark:hover:bg-input/30 dark:focus-visible:bg-input/30 h-8 w-16 border-transparent bg-transparent text-right shadow-none focus-visible:border dark:bg-transparent"
-					defaultValue={row.original.limit}
-					id={`${row.original.id}-limit`}
-				/>
-			</form>
-		),
-	},
-	{
-		accessorKey: "reviewer",
-		header: "Reviewer",
+		accessorKey: "slug",
+		header: "Slug",
 		cell: ({ row }) => {
-			const isAssigned = row.original.reviewer !== "Assign reviewer";
-
-			if (isAssigned) {
-				return row.original.reviewer;
-			}
-
 			return (
-				<>
-					<Label htmlFor={`${row.original.id}-reviewer`} className="sr-only">
-						Reviewer
-					</Label>
-					<Select>
-						<SelectTrigger
-							className="w-38 **:data-[slot=select-value]:block **:data-[slot=select-value]:truncate"
-							size="sm"
-							id={`${row.original.id}-reviewer`}
-						>
-							<SelectValue placeholder="Assign reviewer" />
-						</SelectTrigger>
-						<SelectContent align="end">
-							<SelectItem value="Eddie Lake">Eddie Lake</SelectItem>
-							<SelectItem value="Jamik Tashpulatov">
-								Jamik Tashpulatov
-							</SelectItem>
-						</SelectContent>
-					</Select>
-				</>
+				<div className="max-w-[200px] truncate text-sm text-muted-foreground">
+					{row.original.slug}
+				</div>
 			);
 		},
 	},
 	{
+		accessorKey: "status",
+		header: "Status",
+		cell: ({ row }) => {
+			return <ProductStatusBadge status={row.original.status} />;
+		},
+	},
+	{
 		id: "actions",
-		cell: () => (
-			<DropdownMenu>
-				<DropdownMenuTrigger asChild>
-					<Button
-						variant="ghost"
-						className="data-[state=open]:bg-muted text-muted-foreground flex size-8"
-						size="icon"
-					>
-						<IconDotsVertical />
-						<span className="sr-only">Open menu</span>
-					</Button>
-				</DropdownMenuTrigger>
-				<DropdownMenuContent align="end" className="w-32">
-					<DropdownMenuItem>Edit</DropdownMenuItem>
-					<DropdownMenuItem>Make a copy</DropdownMenuItem>
-					<DropdownMenuItem>Favorite</DropdownMenuItem>
-					<DropdownMenuSeparator />
-					<DropdownMenuItem variant="destructive">Delete</DropdownMenuItem>
-				</DropdownMenuContent>
-			</DropdownMenu>
-		),
+		cell: ({ row }) => {
+			const productId = row.original.id;
+			const params = useParams({ strict: false });
+			const store = params.store;
+			return (
+				<DropdownMenu>
+					<DropdownMenuTrigger asChild>
+						<Button
+							variant="ghost"
+							className="data-[state=open]:bg-muted text-muted-foreground flex size-8"
+							size="icon"
+						>
+							<IconDotsVertical />
+							<span className="sr-only">Open menu</span>
+						</Button>
+					</DropdownMenuTrigger>
+					<DropdownMenuContent align="end" className="w-32">
+						<DropdownMenuItem asChild>
+							<Link
+								to="/$store/products/add"
+								search={{ edit: productId.toString() }}
+								params={{ store: store || "" }}
+							>
+								Editar
+							</Link>
+						</DropdownMenuItem>
+						<DropdownMenuItem>Fazer uma cópia</DropdownMenuItem>
+						<DropdownMenuItem>Favoritar</DropdownMenuItem>
+						<DropdownMenuSeparator />
+						<DropdownMenuItem variant="destructive">Excluir</DropdownMenuItem>
+					</DropdownMenuContent>
+				</DropdownMenu>
+			);
+		},
 	},
 ];
 
 function DraggableRow({ row }: { row: Row<z.infer<typeof schema>> }) {
 	const { transform, transition, setNodeRef, isDragging } = useSortable({
-		id: row.original.id,
+		id: String(row.original.id),
 	});
 
 	return (
@@ -335,6 +329,8 @@ export function DataTable({
 	data: z.infer<typeof schema>[];
 }) {
 	const { store } = useParams({ strict: false });
+	const viewSelectorId = React.useId();
+	const rowsPerPageId = React.useId();
 	const [data, setData] = React.useState(() => initialData);
 	const [rowSelection, setRowSelection] = React.useState({});
 	const [columnVisibility, setColumnVisibility] =
@@ -401,14 +397,14 @@ export function DataTable({
 			className="w-full flex-col justify-start gap-6"
 		>
 			<div className="flex items-center justify-between px-4 lg:px-6">
-				<Label htmlFor="view-selector" className="sr-only">
+				<Label htmlFor={viewSelectorId} className="sr-only">
 					View
 				</Label>
 				<Select defaultValue="outline">
 					<SelectTrigger
 						className="flex w-fit @4xl/main:hidden"
 						size="sm"
-						id="view-selector"
+						id={viewSelectorId}
 					>
 						<SelectValue placeholder="Select a view" />
 					</SelectTrigger>
@@ -464,7 +460,11 @@ export function DataTable({
 						</DropdownMenuContent>
 					</DropdownMenu>
 					<Button variant="outline" size="sm" asChild>
-						<Link to="/$store/products/add" params={{ store: store || "" }}>
+						<Link
+							to="/$store/products/add"
+							params={{ store: store || "" }}
+							search={{ edit: undefined }}
+						>
 							<IconPlus />
 							<span className="hidden lg:inline">Adicionar produto</span>
 						</Link>
@@ -533,7 +533,7 @@ export function DataTable({
 					</div>
 					<div className="flex w-full items-center gap-8 lg:w-fit">
 						<div className="hidden items-center gap-2 lg:flex">
-							<Label htmlFor="rows-per-page" className="text-sm font-medium">
+							<Label htmlFor={rowsPerPageId} className="text-sm font-medium">
 								Rows per page
 							</Label>
 							<Select
@@ -542,7 +542,7 @@ export function DataTable({
 									table.setPageSize(Number(value));
 								}}
 							>
-								<SelectTrigger size="sm" className="w-20" id="rows-per-page">
+								<SelectTrigger size="sm" className="w-20" id={rowsPerPageId}>
 									<SelectValue
 										placeholder={table.getState().pagination.pageSize}
 									/>
@@ -623,181 +623,23 @@ export function DataTable({
 	);
 }
 
-const chartData = [
-	{ month: "January", desktop: 186, mobile: 80 },
-	{ month: "February", desktop: 305, mobile: 200 },
-	{ month: "March", desktop: 237, mobile: 120 },
-	{ month: "April", desktop: 73, mobile: 190 },
-	{ month: "May", desktop: 209, mobile: 130 },
-	{ month: "June", desktop: 214, mobile: 140 },
-];
-
-const chartConfig = {
-	desktop: {
-		label: "Desktop",
-		color: "var(--primary)",
-	},
-	mobile: {
-		label: "Mobile",
-		color: "var(--primary)",
-	},
-} satisfies ChartConfig;
-
 function TableCellViewer({ item }: { item: z.infer<typeof schema> }) {
-	const isMobile = useIsMobile();
+	const params = useParams({ strict: false });
+	const store = params.store;
 
 	return (
-		<Drawer direction={isMobile ? "bottom" : "right"}>
-			<DrawerTrigger asChild>
-				<Button variant="link" className="text-foreground w-fit px-0 text-left">
-					{item.header}
-				</Button>
-			</DrawerTrigger>
-			<DrawerContent>
-				<DrawerHeader className="gap-1">
-					<DrawerTitle>{item.header}</DrawerTitle>
-					<DrawerDescription>
-						Showing total visitors for the last 6 months
-					</DrawerDescription>
-				</DrawerHeader>
-				<div className="flex flex-col gap-4 overflow-y-auto px-4 text-sm">
-					{!isMobile && (
-						<>
-							<ChartContainer config={chartConfig}>
-								<AreaChart
-									accessibilityLayer
-									data={chartData}
-									margin={{
-										left: 0,
-										right: 10,
-									}}
-								>
-									<CartesianGrid vertical={false} />
-									<XAxis
-										dataKey="month"
-										tickLine={false}
-										axisLine={false}
-										tickMargin={8}
-										tickFormatter={(value) => value.slice(0, 3)}
-										hide
-									/>
-									<ChartTooltip
-										cursor={false}
-										content={<ChartTooltipContent indicator="dot" />}
-									/>
-									<Area
-										dataKey="mobile"
-										type="natural"
-										fill="var(--color-mobile)"
-										fillOpacity={0.6}
-										stroke="var(--color-mobile)"
-										stackId="a"
-									/>
-									<Area
-										dataKey="desktop"
-										type="natural"
-										fill="var(--color-desktop)"
-										fillOpacity={0.4}
-										stroke="var(--color-desktop)"
-										stackId="a"
-									/>
-								</AreaChart>
-							</ChartContainer>
-							<Separator />
-							<div className="grid gap-2">
-								<div className="flex gap-2 leading-none font-medium">
-									Trending up by 5.2% this month{" "}
-									<IconTrendingUp className="size-4" />
-								</div>
-								<div className="text-muted-foreground">
-									Showing total visitors for the last 6 months. This is just
-									some random text to test the layout. It spans multiple lines
-									and should wrap around.
-								</div>
-							</div>
-							<Separator />
-						</>
-					)}
-					<form className="flex flex-col gap-4">
-						<div className="flex flex-col gap-3">
-							<Label htmlFor="header">Header</Label>
-							<Input id="header" defaultValue={item.header} />
-						</div>
-						<div className="grid grid-cols-2 gap-4">
-							<div className="flex flex-col gap-3">
-								<Label htmlFor="type">Type</Label>
-								<Select defaultValue={item.type}>
-									<SelectTrigger id="type" className="w-full">
-										<SelectValue placeholder="Select a type" />
-									</SelectTrigger>
-									<SelectContent>
-										<SelectItem value="Table of Contents">
-											Table of Contents
-										</SelectItem>
-										<SelectItem value="Executive Summary">
-											Executive Summary
-										</SelectItem>
-										<SelectItem value="Technical Approach">
-											Technical Approach
-										</SelectItem>
-										<SelectItem value="Design">Design</SelectItem>
-										<SelectItem value="Capabilities">Capabilities</SelectItem>
-										<SelectItem value="Focus Documents">
-											Focus Documents
-										</SelectItem>
-										<SelectItem value="Narrative">Narrative</SelectItem>
-										<SelectItem value="Cover Page">Cover Page</SelectItem>
-									</SelectContent>
-								</Select>
-							</div>
-							<div className="flex flex-col gap-3">
-								<Label htmlFor="status">Status</Label>
-								<Select defaultValue={item.status}>
-									<SelectTrigger id="status" className="w-full">
-										<SelectValue placeholder="Select a status" />
-									</SelectTrigger>
-									<SelectContent>
-										<SelectItem value="Done">Done</SelectItem>
-										<SelectItem value="In Progress">In Progress</SelectItem>
-										<SelectItem value="Not Started">Not Started</SelectItem>
-									</SelectContent>
-								</Select>
-							</div>
-						</div>
-						<div className="grid grid-cols-2 gap-4">
-							<div className="flex flex-col gap-3">
-								<Label htmlFor="target">Target</Label>
-								<Input id="target" defaultValue={item.target} />
-							</div>
-							<div className="flex flex-col gap-3">
-								<Label htmlFor="limit">Limit</Label>
-								<Input id="limit" defaultValue={item.limit} />
-							</div>
-						</div>
-						<div className="flex flex-col gap-3">
-							<Label htmlFor="reviewer">Reviewer</Label>
-							<Select defaultValue={item.reviewer}>
-								<SelectTrigger id="reviewer" className="w-full">
-									<SelectValue placeholder="Select a reviewer" />
-								</SelectTrigger>
-								<SelectContent>
-									<SelectItem value="Eddie Lake">Eddie Lake</SelectItem>
-									<SelectItem value="Jamik Tashpulatov">
-										Jamik Tashpulatov
-									</SelectItem>
-									<SelectItem value="Emily Whalen">Emily Whalen</SelectItem>
-								</SelectContent>
-							</Select>
-						</div>
-					</form>
-				</div>
-				<DrawerFooter>
-					<Button>Submit</Button>
-					<DrawerClose asChild>
-						<Button variant="outline">Done</Button>
-					</DrawerClose>
-				</DrawerFooter>
-			</DrawerContent>
-		</Drawer>
+		<Button
+			variant="link"
+			className="text-foreground w-fit px-0 text-left"
+			asChild
+		>
+			<Link
+				to="/$store/products/add"
+				search={{ edit: item.id.toString() }}
+				params={{ store: store || "" }}
+			>
+				{item.title}
+			</Link>
+		</Button>
 	);
 }
