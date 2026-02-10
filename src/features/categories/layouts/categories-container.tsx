@@ -30,8 +30,6 @@ export function CategoriesContainer() {
 		toggleHidden,
 		deleteCategory,
 		moveCategory,
-		isLoading,
-		error,
 	} = useCategories({
 		createCategory: createCategoryMutation,
 		updateCategory: updateCategoryMutation,
