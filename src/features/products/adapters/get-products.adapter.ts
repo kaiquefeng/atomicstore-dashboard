@@ -1,4 +1,4 @@
-import { apiClient } from "@/services/api";
+import { apiClient, buildStoreParams } from "@/services/api";
 
 export interface Product {
 	id: string | number;
@@ -13,7 +13,10 @@ export interface Product {
 	[key: string]: unknown;
 }
 
-export const getProductsAdapter = async (): Promise<Product[]> => {
+export const getProductsAdapter = async (
+	storeId?: string,
+): Promise<Product[]> => {
+	const params = buildStoreParams(storeId);
 	const response = await apiClient.get<
 		| Product[]
 		| {
@@ -21,7 +24,7 @@ export const getProductsAdapter = async (): Promise<Product[]> => {
 				data?: Product[];
 				items?: Product[];
 		  }
-	>("/catalog/all");
+	>("/catalog/all", { params });
 
 	const data = response.data;
 	const productsList = Array.isArray(data)

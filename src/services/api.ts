@@ -15,6 +15,14 @@ export function getStoreSlug(): string | undefined {
 	return currentStoreSlug;
 }
 
+export function buildStoreParams(storeId?: string) {
+	const params: Record<string, string> = {};
+	if (storeId) {
+		params.storeId = storeId;
+	}
+	return params;
+}
+
 const apiClient: AxiosInstance = axios.create({
 	baseURL: import.meta.env.VITE_API_URL || "https://api.oatomicstore.com",
 	headers: {

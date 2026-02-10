@@ -1,4 +1,4 @@
-import { apiClient } from "@/services/api";
+import { apiClient, buildStoreParams } from "@/services/api";
 import type { CreateCategoryResponse } from "./create-category.adapter";
 
 export interface UpdateCategoryPayload {
@@ -31,11 +31,7 @@ export const updateCategoryAdapter = async (
 		requestPayload.hidden = categoryData.hidden;
 	}
 
-	// Construir query parameters
-	const params: Record<string, string> = {};
-	if (storeId) {
-		params.storeId = storeId;
-	}
+	const params = buildStoreParams(storeId);
 
 	const response = await apiClient.put<CreateCategoryResponse>(
 		`/catalog/categories/${id}`,

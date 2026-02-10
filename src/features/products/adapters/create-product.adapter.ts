@@ -33,6 +33,11 @@ export interface CreateProductPayload {
 	status: "draft" | "active" | "archived";
 	storeId: string;
 	variants: ProductVariant[];
+	stock?: number;
+	weightGrams?: number;
+	heightMm?: number;
+	widthMm?: number;
+	lengthMm?: number;
 	description?: string;
 	images?: Array<{
 		id?: string;

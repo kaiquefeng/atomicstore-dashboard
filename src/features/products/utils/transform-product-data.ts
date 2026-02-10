@@ -8,6 +8,19 @@ import type {
 export function transformProductDataToFormData(
 	productData: any,
 ): Partial<ProductFormData> {
+	const weightGrams =
+		(productData as { weightGrams?: number }).weightGrams ??
+		(productData as { weight?: number }).weight;
+	const heightMm =
+		(productData as { heightMm?: number }).heightMm ??
+		(productData as { height?: number }).height;
+	const widthMm =
+		(productData as { widthMm?: number }).widthMm ??
+		(productData as { width?: number }).width;
+	const lengthMm =
+		(productData as { lengthMm?: number }).lengthMm ??
+		(productData as { length?: number }).length;
+
 	const formData: Partial<ProductFormData> = {
 		title: productData.title || productData.name || "",
 		description: (productData.description as string) || "",
@@ -15,10 +28,12 @@ export function transformProductDataToFormData(
 		category: (productData.category as string) || "",
 		tags: (productData.tags as string) || "",
 		stock: productData.stock ? String(productData.stock) : "",
-		weight: productData.weight ? String(productData.weight) : "",
-		height: productData.height ? String(productData.height) : "",
-		width: productData.width ? String(productData.width) : "",
-		length: productData.length ? String(productData.length) : "",
+		// formulário usa peso em gramas
+		weight: typeof weightGrams === "number" ? String(weightGrams) : "",
+		// formulário usa dimensões em cm, backend em mm
+		height: typeof heightMm === "number" ? String(heightMm / 10) : "",
+		width: typeof widthMm === "number" ? String(widthMm / 10) : "",
+		length: typeof lengthMm === "number" ? String(lengthMm / 10) : "",
 	};
 
 	// Transform variant options from metadata.properties

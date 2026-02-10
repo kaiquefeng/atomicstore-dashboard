@@ -198,6 +198,37 @@ function AddProductPage() {
 	}, [title, productVariants.length, setProductVariants]);
 
 	function handleSubmit(data: ProductFormData) {
+		// Converter estoque e dimensões do formulário para o formato esperado pela API
+		const parsedStock = data.stock ? Number(data.stock) : undefined;
+		const stock = Number.isFinite(parsedStock as number)
+			? (parsedStock as number)
+			: undefined;
+
+		const parsedWeightGrams = data.weight ? Number(data.weight) : undefined;
+		const weightGrams = Number.isFinite(parsedWeightGrams as number)
+			? (parsedWeightGrams as number)
+			: undefined;
+
+		const parsedHeightCm = data.height ? Number(data.height) : undefined;
+		const heightMm =
+			Number.isFinite(parsedHeightCm as number) &&
+			(parsedHeightCm as number) > 0
+				? (parsedHeightCm as number) * 10
+				: undefined;
+
+		const parsedWidthCm = data.width ? Number(data.width) : undefined;
+		const widthMm =
+			Number.isFinite(parsedWidthCm as number) && (parsedWidthCm as number) > 0
+				? (parsedWidthCm as number) * 10
+				: undefined;
+
+		const parsedLengthCm = data.length ? Number(data.length) : undefined;
+		const lengthMm =
+			Number.isFinite(parsedLengthCm as number) &&
+			(parsedLengthCm as number) > 0
+				? (parsedLengthCm as number) * 10
+				: undefined;
+
 		// Converter variantOptions para properties no formato esperado pela API
 		const properties = variantOptions
 			.filter((option) => option.values.length > 0)
@@ -300,6 +331,11 @@ function AddProductPage() {
 					variants,
 					images: imageFiles,
 					existingImageIds: existingImageReferences,
+					stock,
+					weightGrams,
+					heightMm,
+					widthMm,
+					lengthMm,
 					properties: properties.length > 0 ? properties : undefined,
 				},
 				{
@@ -319,6 +355,11 @@ function AddProductPage() {
 					status: (data.status as "draft" | "active" | "archived") || "draft",
 					variants,
 					images: imageFiles,
+					stock,
+					weightGrams,
+					heightMm,
+					widthMm,
+					lengthMm,
 					properties: properties.length > 0 ? properties : undefined,
 				},
 				{

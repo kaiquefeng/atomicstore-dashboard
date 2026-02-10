@@ -20,6 +20,11 @@ export interface CreateProductData {
 	status?: "draft" | "active" | "archived";
 	variants: ProductVariant[];
 	images: File[];
+	stock?: number;
+	weightGrams?: number;
+	heightMm?: number;
+	widthMm?: number;
+	lengthMm?: number;
 	properties?: Array<{
 		title: string;
 		options: string[];
@@ -58,6 +63,11 @@ export function useCreateProduct() {
 				status: data.status || "draft",
 				storeId: currentStore.id,
 				variants: data.variants,
+				stock: data.stock,
+				weightGrams: data.weightGrams,
+				heightMm: data.heightMm,
+				widthMm: data.widthMm,
+				lengthMm: data.lengthMm,
 				description: data.description,
 				images: uploadedImages.map((img) => ({
 					id: img.id,

@@ -1,4 +1,4 @@
-import { apiClient } from "@/services/api";
+import { apiClient, buildStoreParams } from "@/services/api";
 
 export interface DeleteCategoryResponse {
 	id: string;
@@ -10,11 +10,7 @@ export const deleteCategoryAdapter = async (
 	categoryId: string,
 	storeId?: string,
 ): Promise<DeleteCategoryResponse> => {
-	// Construir query parameters
-	const params: Record<string, string> = {};
-	if (storeId) {
-		params.storeId = storeId;
-	}
+	const params = buildStoreParams(storeId);
 
 	const response = await apiClient.delete<DeleteCategoryResponse>(
 		`/catalog/categories/${categoryId}`,

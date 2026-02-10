@@ -1,4 +1,4 @@
-import { apiClient } from "@/services/api";
+import { apiClient, buildStoreParams } from "@/services/api";
 import type { Category } from "../types";
 
 export interface CategoryApiResponse {
@@ -54,10 +54,7 @@ function buildCategoryTree(categories: CategoryApiResponse[]): Category[] {
 export const getCategoriesAdapter = async (
 	storeId?: string,
 ): Promise<Category[]> => {
-	const params: Record<string, string> = {};
-	if (storeId) {
-		params.storeId = storeId;
-	}
+	const params = buildStoreParams(storeId);
 
 	const response = await apiClient.get<
 		| CategoryApiResponse[]

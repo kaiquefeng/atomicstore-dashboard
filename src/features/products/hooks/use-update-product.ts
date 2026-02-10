@@ -22,6 +22,11 @@ export interface UpdateProductData {
 	description?: string;
 	status?: "draft" | "active" | "archived";
 	variants: ProductVariant[];
+	stock?: number;
+	weightGrams?: number;
+	heightMm?: number;
+	widthMm?: number;
+	lengthMm?: number;
 	images: File[]; // Files to upload
 	existingImageIds?: Array<{
 		id: string;
@@ -88,6 +93,11 @@ export function useUpdateProduct() {
 				status: data.status || "draft",
 				storeId: currentStore.id,
 				variants: data.variants,
+				stock: data.stock,
+				weightGrams: data.weightGrams,
+				heightMm: data.heightMm,
+				widthMm: data.widthMm,
+				lengthMm: data.lengthMm,
 				description: data.description,
 				images: allImages,
 				properties: data.properties,
