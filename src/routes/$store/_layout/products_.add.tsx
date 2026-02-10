@@ -13,6 +13,10 @@ import {
 } from "@tabler/icons-react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import * as React from "react";
+import { FormProvider } from "react-hook-form";
+import { ProductBasicInfo } from "@/components/products/product-basic-info";
+import { ProductImagesUpload } from "@/components/products/product-images-upload";
+import { VariantValueInput } from "@/components/products/variant-value-input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -42,7 +46,6 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { Textarea } from "@/components/ui/textarea";
 import {
 	Tooltip,
 	TooltipContent,
@@ -55,7 +58,14 @@ import {
 import type { ProductVariant as ApiProductVariant } from "@/features/products/adapters/create-product.adapter";
 import { useCreateProduct } from "@/features/products/hooks/use-create-product";
 import { useProductById } from "@/features/products/hooks/use-product-by-id";
+import { useProductForm } from "@/features/products/hooks/use-product-form";
 import { useUpdateProduct } from "@/features/products/hooks/use-update-product";
+import type {
+	ProductFormData,
+	ProductVariant,
+	VideoItem,
+} from "@/features/products/schemas/product-form";
+import { transformProductDataToFormData } from "@/features/products/utils/transform-product-data";
 import { generateBarcode, generateSKU } from "@/helpers/convert";
 
 export const Route = createFileRoute("/$store/_layout/products_/add")({
@@ -66,137 +76,6 @@ export const Route = createFileRoute("/$store/_layout/products_/add")({
 		};
 	},
 });
-
-function VariantValueInput({
-	optionName,
-	onAdd,
-}: {
-	optionName: string;
-	onAdd: (value: string) => void;
-}) {
-	const [value, setValue] = React.useState("");
-	const [isAdding, setIsAdding] = React.useState(false);
-	const inputRef = React.useRef<HTMLInputElement>(null);
-
-	function handleSubmit(e?: React.FormEvent) {
-		if (e) {
-			e.preventDefault();
-		}
-		if (value.trim()) {
-			onAdd(value.trim());
-			setValue("");
-			setIsAdding(false);
-		} else {
-			setIsAdding(false);
-		}
-	}
-
-	function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-		if (e.key === "Enter") {
-			e.preventDefault();
-			handleSubmit();
-		} else if (e.key === "Escape") {
-			setValue("");
-			setIsAdding(false);
-		}
-	}
-
-	function handleBlur() {
-		// Usar setTimeout para permitir que o onClick do botão seja processado primeiro
-		setTimeout(() => {
-			if (value.trim()) {
-				handleSubmit();
-			} else {
-				setIsAdding(false);
-			}
-		}, 200);
-	}
-
-	if (!isAdding) {
-		return (
-			<Button
-				type="button"
-				variant="outline"
-				size="xs"
-				onClick={() => {
-					setIsAdding(true);
-					// Focar no input após o estado ser atualizado
-					setTimeout(() => {
-						inputRef.current?.focus();
-					}, 0);
-				}}
-				className="border-dashed"
-			>
-				<IconPlus className="size-3" />
-				Adicionar
-			</Button>
-		);
-	}
-
-	return (
-		<div className="flex items-center gap-1">
-			<Input
-				ref={inputRef}
-				autoFocus
-				value={value}
-				onChange={(e) => setValue(e.target.value)}
-				onKeyDown={handleKeyDown}
-				onBlur={handleBlur}
-				placeholder={
-					optionName === "Size" || optionName === "Tamanho"
-						? "Ex: XL"
-						: optionName === "Color" || optionName === "Cor"
-							? "Ex: Vermelho"
-							: "Valor"
-				}
-				className="h-6 w-20 px-2 text-xs"
-			/>
-		</div>
-	);
-}
-
-interface ProductImage {
-	id: string;
-	file: File | null;
-	preview: string;
-	name: string;
-}
-
-interface VariantOption {
-	id: string;
-	name: string;
-	values: string[];
-}
-
-interface ProductVariant {
-	id: string;
-	sku: string;
-	priceBrl: string;
-	compareAtBrl: string;
-	costBrl: string;
-	title: string;
-	barcode: string;
-	isDefault: boolean;
-	stock: string;
-	showPrice: boolean;
-	weightKg: string;
-	lengthCm: string;
-	widthCm: string;
-	heightCm: string;
-	imageId?: string; // Reference to product image ID
-	metadata: {
-		size?: string;
-		color?: string;
-		[key: string]: string | undefined;
-	};
-}
-
-interface VideoItem {
-	id: string;
-	url: string;
-	title: string;
-	thumbnail?: string;
-}
 
 function AddProductPage() {
 	const navigate = useNavigate();
@@ -212,27 +91,43 @@ function AddProductPage() {
 	const { mutate: updateProduct, isPending: isUpdating } = useUpdateProduct();
 	const isPending = isCreating || isUpdating;
 
-	const [title, setTitle] = React.useState("");
-	const [description, setDescription] = React.useState("");
-	const [category, setCategory] = React.useState("");
-	const [stock, setStock] = React.useState("");
-	const [weight, setWeight] = React.useState("");
-	const [height, setHeight] = React.useState("");
-	const [width, setWidth] = React.useState("");
-	const [length, setLength] = React.useState("");
-	const [status, setStatus] = React.useState("draft");
-	const [tags, setTags] = React.useState("");
+	// Transform product data to form data when editing
+	const initialFormData = React.useMemo(() => {
+		if (isEditMode && productData) {
+			return transformProductDataToFormData(productData);
+		}
+		return undefined;
+	}, [isEditMode, productData]);
 
-	// Product variants with individual pricing
-	const [productVariants, setProductVariants] = React.useState<
-		ProductVariant[]
-	>([]);
+	// Use the new product form hook
+	const productForm = useProductForm({
+		initialData: initialFormData,
+	});
 
-	const [productImages, setProductImages] = React.useState<ProductImage[]>([]);
+	const {
+		form,
+		images,
+		variants: productVariants,
+		setVariants: setProductVariants,
+		addVariant: addProductVariant,
+		updateVariant: updateProductVariant,
+		variantOptions,
+		setVariantOptions,
+		addVariantOption,
+		removeVariantOption,
+		updateVariantOption,
+		addValueToVariant,
+		removeValueFromVariant,
+		generateVariantsFromOptions,
+		videos: categoryVideos,
+		setVideos: setCategoryVideos,
+		addVideos: handleVideoFileInput,
+		removeVideo: removeVideoItem,
+	} = productForm;
 
-	const [variantOptions, setVariantOptions] = React.useState<VariantOption[]>(
-		[],
-	);
+	// Watch form values for status badge and title
+	const status = form.watch("status");
+	const title = form.watch("title");
 
 	// State for image picker drawer
 	const [imagePickerVariantId, setImagePickerVariantId] = React.useState<
@@ -242,296 +137,43 @@ function AddProductPage() {
 	// State for variant edit drawer
 	const [editVariantId, setEditVariantId] = React.useState<string | null>(null);
 
-	const [categoryVideos, setCategoryVideos] = React.useState<VideoItem[]>([]);
-
 	const [previewVideo, setPreviewVideo] = React.useState<VideoItem | null>(
 		null,
 	);
 	const videoInputRef = React.useRef<HTMLInputElement>(null);
 
-	const [isDragging, setIsDragging] = React.useState(false);
-	const fileInputRef = React.useRef<HTMLInputElement>(null);
-
-	// Carregar dados do produto quando estiver em modo de edição
+	// Update images when initial data changes
 	React.useEffect(() => {
-		if (isEditMode && productData) {
-			// Campos básicos
-			setTitle(productData.title || productData.name || "");
-			setDescription((productData.description as string) || "");
-			setStatus((productData.status as string) || "draft");
-			setCategory((productData.category as string) || "");
-			setTags((productData.tags as string) || "");
-
-			// Carregar propriedades (properties) de metadata.properties
-			const metadata = productData.metadata as
-				| {
-						properties?: Array<{
-							title: string;
-							options: string[];
-						}>;
-				  }
-				| undefined;
-			if (metadata?.properties && Array.isArray(metadata.properties)) {
-				const loadedVariantOptions: VariantOption[] = metadata.properties.map(
-					(prop, index) => ({
-						id: `property-${Date.now()}-${index}`,
-						name: prop.title,
-						values: prop.options || [],
-					}),
-				);
-				setVariantOptions(loadedVariantOptions);
-			}
-
-			// Carregar imagens
-			const images = productData.images || [];
-			if (images.length > 0 || productData.image) {
-				const imageArray = Array.isArray(images) ? images : [productData.image];
-				const loadedImages: ProductImage[] = imageArray
-					.filter((img) => {
-						// Filtrar imagens válidas (string ou objeto com url)
-						if (!img) return false;
-						if (typeof img === "string") return !!img;
-						const imgObj = img as unknown as { url?: string; id?: string };
-						return !!imgObj?.url;
-					})
-					.map((img, index) => {
-						// Se for string, tratar como URL simples
-						if (typeof img === "string") {
-							return {
-								id: `loaded-${index}`,
-								file: null,
-								preview: img,
-								name: `Imagem ${index + 1}`,
-							};
-						}
-						// Se for objeto, extrair id, url, alt e sortOrder
-						const imgObj = img as unknown as {
-							id?: string;
-							url?: string;
-							alt?: string;
-							sortOrder?: number;
-						};
-						return {
-							id: imgObj.id || `loaded-${index}`,
-							file: null,
-							preview: imgObj.url || "",
-							name: imgObj.alt || `Imagem ${index + 1}`,
-						};
-					});
-				setProductImages(loadedImages);
-			}
-
-			// Carregar variações
-			const variants = (productData.variants ||
-				productData.defaultVariant ||
-				[]) as unknown[];
-			if (variants.length > 0) {
-				const loadedVariants: ProductVariant[] = variants.map(
-					(variant: any, index) => {
-						const isDefault = variant.isDefault || index === 0;
-						return {
-							id: variant.id || `variant-${index}`,
-							sku: variant.sku || "",
-							priceBrl: variant.priceBrl
-								? String(variant.priceBrl)
-								: variant.price
-									? String(variant.price)
-									: "",
-							compareAtBrl: variant.compareAtPriceBrl
-								? String(variant.compareAtPriceBrl)
-								: variant.compareAtPrice
-									? String(variant.compareAtPrice)
-									: "",
-							costBrl: variant.costBrl
-								? String(variant.costBrl)
-								: variant.cost
-									? String(variant.cost)
-									: "",
-							title: variant.title || `Variação ${index + 1}`,
-							barcode: variant.barcode || "",
-							isDefault,
-							stock: variant.stock ? String(variant.stock) : "",
-							showPrice: variant.showPrice !== false,
-							weightKg: variant.weightKg
-								? String(variant.weightKg)
-								: variant.weight
-									? String(variant.weight)
-									: "",
-							lengthCm: variant.lengthCm
-								? String(variant.lengthCm)
-								: variant.length
-									? String(variant.length)
-									: "",
-							widthCm: variant.widthCm
-								? String(variant.widthCm)
-								: variant.width
-									? String(variant.width)
-									: "",
-							heightCm: variant.heightCm
-								? String(variant.heightCm)
-								: variant.height
-									? String(variant.height)
-									: "",
-							imageId: variant.imageId || undefined,
-							metadata: variant.metadata || {},
-						};
-					},
-				);
-				setProductVariants(loadedVariants);
-			} else if (productData.defaultVariant) {
-				// Se não houver array de variants mas houver defaultVariant
-				const defaultVariant = productData.defaultVariant as any;
-				const loadedVariant: ProductVariant = {
-					id: "default-variant",
-					sku: defaultVariant.sku || "",
-					priceBrl: defaultVariant.priceBrl
-						? String(defaultVariant.priceBrl)
-						: defaultVariant.price
-							? String(defaultVariant.price)
-							: "",
-					compareAtBrl: defaultVariant.compareAtPriceBrl
-						? String(defaultVariant.compareAtPriceBrl)
-						: "",
-					costBrl: defaultVariant.costBrl ? String(defaultVariant.costBrl) : "",
-					title: "Variação Padrão",
-					barcode: defaultVariant.barcode || "",
-					isDefault: true,
-					stock: defaultVariant.stock ? String(defaultVariant.stock) : "",
-					showPrice: true,
-					weightKg: defaultVariant.weightKg
-						? String(defaultVariant.weightKg)
-						: "",
-					lengthCm: defaultVariant.lengthCm
-						? String(defaultVariant.lengthCm)
-						: "",
-					widthCm: defaultVariant.widthCm ? String(defaultVariant.widthCm) : "",
-					heightCm: defaultVariant.heightCm
-						? String(defaultVariant.heightCm)
-						: "",
-					metadata: defaultVariant.metadata || {},
-				};
-				setProductVariants([loadedVariant]);
-			}
-
-			// Carregar dimensões e peso (se disponíveis no produto)
-			if (productData.weight) {
-				setWeight(String(productData.weight));
-			}
-			if (productData.height) {
-				setHeight(String(productData.height));
-			}
-			if (productData.width) {
-				setWidth(String(productData.width));
-			}
-			if (productData.length) {
-				setLength(String(productData.length));
-			}
-			if (productData.stock) {
-				setStock(String(productData.stock));
-			}
+		if (initialFormData?.productImages) {
+			images.setImages(initialFormData.productImages);
 		}
-	}, [isEditMode, productData]);
+	}, [initialFormData?.productImages, images.setImages]);
 
-	function handleDragOver(e: React.DragEvent) {
-		e.preventDefault();
-		setIsDragging(true);
-	}
-
-	function handleDragLeave(e: React.DragEvent) {
-		e.preventDefault();
-		setIsDragging(false);
-	}
-
-	function handleDrop(e: React.DragEvent) {
-		e.preventDefault();
-		setIsDragging(false);
-
-		const files = Array.from(e.dataTransfer.files);
-		handleFiles(files);
-	}
-
-	function handleFiles(files: File[]) {
-		const imageFiles = files.filter((file) => file.type.startsWith("image/"));
-
-		const newVariants: ProductImage[] = imageFiles.map((file, index) => ({
-			id: `${Date.now()}-${index}`,
-			file,
-			preview: URL.createObjectURL(file),
-			name: file.name.split(".")[0],
-		}));
-
-		setProductImages((prev) => [...prev, ...newVariants]);
-	}
-
-	function handleFileInput(e: React.ChangeEvent<HTMLInputElement>) {
-		if (e.target.files) {
-			handleFiles(Array.from(e.target.files));
+	// Update variants when initial data changes
+	React.useEffect(() => {
+		if (initialFormData?.productVariants) {
+			setProductVariants(initialFormData.productVariants);
 		}
-	}
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [initialFormData?.productVariants, setProductVariants]);
 
-	function removeProductImage(id: string) {
-		setProductImages((prev) => prev.filter((v) => v.id !== id));
-	}
-
-	function addVariantOption() {
-		setVariantOptions((prev) => [
-			...prev,
-			{ id: `${Date.now()}`, name: "", values: [] },
-		]);
-	}
-
-	function removeVariantOption(id: string) {
-		setVariantOptions((prev) => prev.filter((v) => v.id !== id));
-	}
-
-	function updateVariantOption(id: string, updates: Partial<VariantOption>) {
-		setVariantOptions((prev) =>
-			prev.map((v) => (v.id === id ? { ...v, ...updates } : v)),
-		);
-	}
-
-	function addValueToVariant(variantId: string, value: string) {
-		if (!value.trim()) return;
-		setVariantOptions((prev) =>
-			prev.map((v) =>
-				v.id === variantId ? { ...v, values: [...v.values, value.trim()] } : v,
-			),
-		);
-	}
-
-	function removeValueFromVariant(variantId: string, valueIndex: number) {
-		setVariantOptions((prev) =>
-			prev.map((v) =>
-				v.id === variantId
-					? { ...v, values: v.values.filter((_, i) => i !== valueIndex) }
-					: v,
-			),
-		);
-	}
-
-	function handleVideoFileInput(e: React.ChangeEvent<HTMLInputElement>) {
-		if (e.target.files) {
-			const files = Array.from(e.target.files);
-			const videoFiles = files.filter((file) => file.type.startsWith("video/"));
-
-			const newVideos: VideoItem[] = videoFiles.map((file, index) => ({
-				id: `${Date.now()}-${index}`,
-				url: URL.createObjectURL(file),
-				title: file.name.split(".")[0],
-				thumbnail: undefined,
-			}));
-
-			setCategoryVideos((prev) => [...prev, ...newVideos]);
+	// Update variant options when initial data changes
+	React.useEffect(() => {
+		if (initialFormData?.variantOptions) {
+			setVariantOptions(initialFormData.variantOptions);
 		}
-	}
+	}, [initialFormData?.variantOptions, setVariantOptions]);
 
-	function removeVideoItem(id: string) {
-		setCategoryVideos((prev) => prev.filter((v) => v.id !== id));
-	}
+	// Update videos when initial data changes
+	React.useEffect(() => {
+		if (initialFormData?.categoryVideos) {
+			setCategoryVideos(initialFormData.categoryVideos);
+		}
+	}, [initialFormData?.categoryVideos, setCategoryVideos]);
 
 	// Gerar SKU e barcode automaticamente quando o título mudar (apenas para variações sem SKU/barcode)
 	React.useEffect(() => {
-		if (title.trim() && productVariants.length > 0) {
+		if (title?.trim() && productVariants.length > 0) {
 			setProductVariants((prev) =>
 				prev.map((variant, index) => {
 					const updates: Partial<ProductVariant> = {};
@@ -553,140 +195,9 @@ function AddProductPage() {
 			);
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [title, productVariants.length]);
+	}, [title, productVariants.length, setProductVariants]);
 
-	// Product Variant Management
-	function addProductVariant() {
-		const newVariant: ProductVariant = {
-			id: `${Date.now()}`,
-			sku: title.trim() ? generateSKU(title, productVariants.length) : "",
-			priceBrl: "",
-			compareAtBrl: "",
-			costBrl: "",
-			title: `Nova Variação ${productVariants.length + 1}`,
-			barcode: generateBarcode(productVariants.length),
-			isDefault: productVariants.length === 0,
-			stock: "",
-			showPrice: true,
-			weightKg: "",
-			lengthCm: "",
-			widthCm: "",
-			heightCm: "",
-			metadata: {},
-		};
-		setProductVariants((prev) => [...prev, newVariant]);
-	}
-
-	function updateProductVariant(id: string, updates: Partial<ProductVariant>) {
-		setProductVariants((prev) =>
-			prev.map((v) => (v.id === id ? { ...v, ...updates } : v)),
-		);
-	}
-
-	// @ts-expect-error - id is a string
-	function removeProductVariant(id: string) {
-		setProductVariants((prev) => {
-			const filtered = prev.filter((v) => v.id !== id);
-			// If we removed the default variant, make the first one default
-			if (filtered.length > 0 && !filtered.some((v) => v.isDefault)) {
-				filtered[0].isDefault = true;
-			}
-			return filtered;
-		});
-	}
-
-	// @ts-expect-error - id is a string
-	function setDefaultVariant(id: string) {
-		setProductVariants((prev) =>
-			prev.map((v) => ({
-				...v,
-				isDefault: v.id === id,
-			})),
-		);
-	}
-
-	// @ts-expect-error - id is a string
-	function updateVariantMetadata(id: string, key: string, value: string) {
-		setProductVariants((prev) =>
-			prev.map((v) =>
-				v.id === id ? { ...v, metadata: { ...v.metadata, [key]: value } } : v,
-			),
-		);
-	}
-
-	// Generate variant combinations based on variant options
-	function generateVariantsFromOptions() {
-		if (variantOptions.length === 0) return;
-
-		const colorOption = variantOptions.find((o) => o.name === "Color");
-		const sizeOption = variantOptions.find((o) => o.name === "Size");
-
-		const newVariants: ProductVariant[] = [];
-		let counter = 1;
-
-		if (colorOption && sizeOption) {
-			for (const color of colorOption.values) {
-				for (const size of sizeOption.values) {
-					newVariants.push({
-						id: `${Date.now()}-${counter}`,
-						sku: title.trim() ? generateSKU(title, counter - 1) : "",
-						priceBrl: "",
-						compareAtBrl: "",
-						costBrl: "",
-						title: `${color} ${size}`,
-						barcode: generateBarcode(counter - 1),
-						isDefault: counter === 1,
-						stock: "",
-						showPrice: true,
-						weightKg: "",
-						lengthCm: "",
-						widthCm: "",
-						heightCm: "",
-						metadata: { size, color },
-					});
-					counter++;
-				}
-			}
-		} else if (colorOption || sizeOption) {
-			const option = colorOption || sizeOption;
-			const optionKey = colorOption ? "color" : "size";
-			if (option) {
-				for (const value of option.values) {
-					newVariants.push({
-						id: `${Date.now()}-${counter}`,
-						sku: title.trim() ? generateSKU(title, counter - 1) : "",
-						priceBrl: "",
-						compareAtBrl: "",
-						costBrl: "",
-						title: value,
-						barcode: generateBarcode(counter - 1),
-						isDefault: counter === 1,
-						stock: "",
-						showPrice: true,
-						weightKg: "",
-						lengthCm: "",
-						widthCm: "",
-						heightCm: "",
-						metadata: { [optionKey]: value },
-					});
-					counter++;
-				}
-			}
-		}
-
-		if (newVariants.length > 0) {
-			setProductVariants(newVariants.slice(0, 50)); // Limit to 50 variants
-		}
-	}
-
-	function handleSubmit(e: React.FormEvent) {
-		e.preventDefault();
-
-		// Validar título
-		if (!title.trim()) {
-			return;
-		}
-
+	function handleSubmit(data: ProductFormData) {
 		// Converter variantOptions para properties no formato esperado pela API
 		const properties = variantOptions
 			.filter((option) => option.values.length > 0)
@@ -696,14 +207,12 @@ function AddProductPage() {
 			}));
 
 		// Filtrar apenas imagens com arquivo (novas imagens para upload)
-		const imageFiles = productImages
+		const imageFiles = images.images
 			.filter((img) => img.file !== null)
 			.map((img) => img.file as File);
 
 		// Obter referências das imagens existentes (sem arquivo)
-		// Incluir id, url, alt e sortOrder baseado na ordem das imagens
-		// Usar apenas imagens que têm id válido (não são temporárias)
-		const existingImageReferences = productImages
+		const existingImageReferences = images.images
 			.filter(
 				(img) => img.file === null && img.id && !img.id.startsWith("loaded-"),
 			)
@@ -785,9 +294,9 @@ function AddProductPage() {
 			updateProduct(
 				{
 					id: productId as string | number,
-					title: title.trim(),
-					description: description || undefined,
-					status: status as "draft" | "active" | "archived",
+					title: data.title.trim(),
+					description: data.description || undefined,
+					status: (data.status as "draft" | "active" | "archived") || "draft",
 					variants,
 					images: imageFiles,
 					existingImageIds: existingImageReferences,
@@ -805,9 +314,9 @@ function AddProductPage() {
 		} else {
 			createProduct(
 				{
-					title: title.trim(),
-					description: description || undefined,
-					status: status as "draft" | "active" | "archived",
+					title: data.title.trim(),
+					description: data.description || undefined,
+					status: (data.status as "draft" | "active" | "archived") || "draft",
 					variants,
 					images: imageFiles,
 					properties: properties.length > 0 ? properties : undefined,
@@ -868,1184 +377,1025 @@ function AddProductPage() {
 				)}
 			</div>
 
-			<form onSubmit={handleSubmit} className="space-y-8">
-				{/* Basic Information */}
-				<Card>
-					<CardHeader>
-						<CardTitle className="flex items-center gap-2">
-							<span className="flex size-6 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">
-								1
-							</span>
-							Informações Básicas
-						</CardTitle>
-						<CardDescription>
-							Comece com os detalhes essenciais do seu produto
-						</CardDescription>
-					</CardHeader>
-					<CardContent className="space-y-6">
-						<div className="space-y-2">
-							<Label htmlFor="title">Título do Produto</Label>
-							<Input
-								id="title"
-								placeholder="Ex: Mochila Premium"
-								value={title}
-								onChange={(e) => setTitle(e.target.value)}
-								className="text-lg font-medium"
+			<FormProvider {...form}>
+				<form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-8">
+					{/* Basic Information */}
+					<ProductBasicInfo />
+
+					{/* Imagens do Produto */}
+					<ProductImagesUpload
+						images={images.images}
+						onAddImages={images.addImages}
+						onRemoveImage={images.removeImage}
+					/>
+
+					{/* Video Thumbnails Cover */}
+					<Card>
+						<CardHeader>
+							<CardTitle className="flex items-center gap-2">
+								<span className="flex size-6 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">
+									3
+								</span>
+								Video Thumbnails Cover
+							</CardTitle>
+							<CardDescription>
+								Add product videos to showcase features and tutorials
+							</CardDescription>
+						</CardHeader>
+						<CardContent className="space-y-4">
+							{/* Hidden file input for video upload */}
+							<input
+								type="file"
+								ref={videoInputRef}
+								onChange={(e) => {
+									if (e.target.files) {
+										handleVideoFileInput(Array.from(e.target.files));
+									}
+								}}
+								accept="video/*"
+								multiple
+								className="hidden"
 							/>
-							<p className="text-muted-foreground text-xs">
-								Escolha um título que descreva claramente seu produto
-							</p>
-						</div>
 
-						<div className="space-y-2">
-							<Label htmlFor="description">Descrição</Label>
-							<Textarea
-								id="description"
-								placeholder="Descreva seu produto em detalhes..."
-								value={description}
-								onChange={(e) => setDescription(e.target.value)}
-								className="min-h-[160px] resize-y"
-							/>
-							<p className="text-muted-foreground text-xs">
-								Inclua características principais, materiais, dimensões e casos
-								de uso
-							</p>
-						</div>
-
-						<Separator />
-
-						<div className="space-y-2">
-							<Label htmlFor="category">Categoria</Label>
-							<Select value={category} onValueChange={setCategory}>
-								<SelectTrigger id="category" className="w-full">
-									<SelectValue placeholder="Selecione uma categoria" />
-								</SelectTrigger>
-								<SelectContent>
-									<SelectItem value="bags">Bolsas e Mochilas</SelectItem>
-									<SelectItem value="electronics">Eletrônicos</SelectItem>
-									<SelectItem value="clothing">Roupas</SelectItem>
-									<SelectItem value="accessories">Acessórios</SelectItem>
-									<SelectItem value="outdoor">Ar Livre e Aventura</SelectItem>
-									<SelectItem value="home">Casa e Decoração</SelectItem>
-								</SelectContent>
-							</Select>
-						</div>
-
-						<div className="space-y-2">
-							<Label htmlFor="tags">Tags</Label>
-							<Input
-								id="tags"
-								placeholder="aventura, viagem, mochila"
-								value={tags}
-								onChange={(e) => setTags(e.target.value)}
-							/>
-							<p className="text-muted-foreground text-xs">
-								Separe as tags com vírgulas para melhor descoberta
-							</p>
-						</div>
-					</CardContent>
-				</Card>
-
-				{/* Imagens do Produto */}
-				<Card>
-					<CardHeader>
-						<CardTitle className="flex items-center gap-2">
-							<span className="flex size-6 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">
-								2
-							</span>
-							Imagens do Produto
-						</CardTitle>
-						<CardDescription>
-							Adicione imagens padrão do produto que podem ser usadas nas
-							variações
-						</CardDescription>
-					</CardHeader>
-					<CardContent className="space-y-4">
-						{/* Hidden file input */}
-						<input
-							type="file"
-							ref={fileInputRef}
-							onChange={handleFileInput}
-							accept="image/*"
-							multiple
-							className="hidden"
-						/>
-
-						{/* Image Grid */}
-						<section
-							aria-label="Image upload area"
-							onDragOver={handleDragOver}
-							onDragLeave={handleDragLeave}
-							onDrop={handleDrop}
-						>
-							<div className="flex flex-wrap gap-3">
-								{productImages.map((image, index) => (
-									<div
-										key={image.id}
-										className="group relative aspect-square w-28 shrink-0 overflow-hidden rounded-xl border-2 border-transparent bg-muted shadow-sm transition-all hover:border-primary/30 hover:shadow-md"
-									>
-										<img
-											src={image.preview}
-											alt={image.name}
-											className="size-full object-cover transition-transform group-hover:scale-105"
+							{/* Video Grid */}
+							<div className="rounded-xl border bg-muted/30 p-4">
+								<div className="flex flex-wrap gap-3">
+									{/* Video Thumbnails */}
+									{categoryVideos.map((video) => (
+										<VideoThumbnail
+											key={video.id}
+											videoUrl={video.url}
+											thumbnail={video.thumbnail}
+											title={video.title}
+											onRemove={() => removeVideoItem(video.id)}
+											onPreview={() => setPreviewVideo(video)}
 										/>
-
-										{/* Principal badge */}
-										{index === 0 && (
-											<div className="absolute left-1.5 top-1.5 z-10">
-												<Badge className="bg-primary text-primary-foreground text-[9px] px-1.5 py-0.5 shadow-sm">
-													Principal
-												</Badge>
-											</div>
-										)}
-
-										{/* Hover overlay with delete */}
-										<div className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 transition-opacity group-hover:opacity-100">
-											<Tooltip>
-												<TooltipTrigger asChild>
-													<Button
-														type="button"
-														variant="ghost"
-														size="icon"
-														className="text-white hover:bg-white/20 hover:text-white"
-														onClick={() => removeProductImage(image.id)}
-													>
-														<IconTrash className="size-5" />
-														<span className="sr-only">Remover imagem</span>
-													</Button>
-												</TooltipTrigger>
-												<TooltipContent>Remover imagem</TooltipContent>
-											</Tooltip>
-										</div>
-									</div>
-								))}
-
-								{/* Add Image Button */}
-								<Tooltip>
-									<TooltipTrigger asChild>
-										<Button
-											type="button"
-											variant="outline"
-											onClick={() => fileInputRef.current?.click()}
-											className={`aspect-square w-28 h-28 shrink-0 flex-col gap-2 rounded-xl border-2 border-dashed ${
-												isDragging
-													? "border-primary bg-primary/10 scale-105"
-													: "border-muted-foreground/30 bg-muted/30 hover:border-primary/50 hover:bg-muted/50"
-											}`}
-										>
-											<div className="flex size-10 items-center justify-center rounded-full bg-muted">
-												<IconPlus className="size-5 text-muted-foreground" />
-											</div>
-										</Button>
-									</TooltipTrigger>
-									<TooltipContent>Adicionar imagem</TooltipContent>
-								</Tooltip>
-							</div>
-
-							{isDragging && (
-								<p className="mt-3 text-center text-sm text-primary font-medium">
-									Solte as imagens aqui para enviar
-								</p>
-							)}
-						</section>
-
-						<p className="text-muted-foreground text-xs">
-							Arraste para reordenar. A primeira imagem será a imagem principal
-							do produto. Suporta PNG, JPG, WebP até 10MB.
-						</p>
-					</CardContent>
-				</Card>
-
-				{/* Video Thumbnails Cover */}
-				<Card>
-					<CardHeader>
-						<CardTitle className="flex items-center gap-2">
-							<span className="flex size-6 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">
-								3
-							</span>
-							Video Thumbnails Cover
-						</CardTitle>
-						<CardDescription>
-							Add product videos to showcase features and tutorials
-						</CardDescription>
-					</CardHeader>
-					<CardContent className="space-y-4">
-						{/* Hidden file input for video upload */}
-						<input
-							type="file"
-							ref={videoInputRef}
-							onChange={handleVideoFileInput}
-							accept="video/*"
-							multiple
-							className="hidden"
-						/>
-
-						{/* Video Grid */}
-						<div className="rounded-xl border bg-muted/30 p-4">
-							<div className="flex flex-wrap gap-3">
-								{/* Video Thumbnails */}
-								{categoryVideos.map((video) => (
-									<VideoThumbnail
-										key={video.id}
-										videoUrl={video.url}
-										thumbnail={video.thumbnail}
-										title={video.title}
-										onRemove={() => removeVideoItem(video.id)}
-										onPreview={() => setPreviewVideo(video)}
-									/>
-								))}
-
-								{/* Add Video Button */}
-								<Tooltip>
-									<TooltipTrigger asChild>
-										<Button
-											type="button"
-											variant="outline"
-											onClick={() => videoInputRef.current?.click()}
-											className="aspect-4/5 w-28 h-auto shrink-0 flex-col gap-2 rounded-xl border-2 border-dashed border-primary/30 bg-primary/5 hover:border-primary/50 hover:bg-primary/10"
-										>
-											<IconPlus className="size-6 text-primary" />
-										</Button>
-									</TooltipTrigger>
-									<TooltipContent>Add video</TooltipContent>
-								</Tooltip>
-							</div>
-						</div>
-
-						<p className="text-muted-foreground text-xs">
-							Click on a video to preview. Supports YouTube, Vimeo, or upload
-							video files directly.
-						</p>
-					</CardContent>
-				</Card>
-
-				{/* Video Preview Modal */}
-				<VideoPreviewModal
-					isOpen={!!previewVideo}
-					onClose={() => setPreviewVideo(null)}
-					videoUrl={previewVideo?.url || ""}
-					title={previewVideo?.title || ""}
-					thumbnail={previewVideo?.thumbnail}
-				/>
-
-				{/* Variações (Variants) */}
-				<Card>
-					<CardHeader>
-						<CardTitle className="flex items-center gap-2">
-							<span className="flex size-6 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">
-								4
-							</span>
-							Variações
-						</CardTitle>
-						<CardDescription>
-							Configure as propriedades e variações do produto
-						</CardDescription>
-					</CardHeader>
-					<CardContent className="space-y-6">
-						{/* Propriedades Section */}
-						<div className="space-y-4">
-							<div className="flex items-center justify-between">
-								<Label className="text-base font-semibold">Propriedades</Label>
-								<Button
-									type="button"
-									variant="outline"
-									size="sm"
-									onClick={addVariantOption}
-								>
-									<IconPlus className="size-4 mr-1" />
-									Adicionar Propriedade
-								</Button>
-							</div>
-
-							{variantOptions.length === 0 ? (
-								<div className="rounded-lg border border-dashed p-6 text-center">
-									<p className="text-muted-foreground text-sm">
-										Adicione propriedades como Cor, Tamanho, Material, etc.
-									</p>
-								</div>
-							) : (
-								<div className="space-y-4">
-									{variantOptions.map((option) => (
-										<div key={option.id} className="space-y-2">
-											<div className="flex items-center justify-between">
-												<Select
-													value={option.name}
-													onValueChange={(value) =>
-														updateVariantOption(option.id, { name: value })
-													}
-												>
-													<SelectTrigger className="w-32 h-8">
-														<SelectValue placeholder="Tipo" />
-													</SelectTrigger>
-													<SelectContent>
-														<SelectItem value="Color">Cor</SelectItem>
-														<SelectItem value="Size">Tamanho</SelectItem>
-														<SelectItem value="Material">Material</SelectItem>
-														<SelectItem value="Style">Estilo</SelectItem>
-														<SelectItem value="Weight">Peso</SelectItem>
-													</SelectContent>
-												</Select>
-												<Button
-													type="button"
-													variant="ghost"
-													size="icon-sm"
-													className="text-muted-foreground hover:text-destructive"
-													onClick={() => removeVariantOption(option.id)}
-												>
-													<IconTrash className="size-4" />
-												</Button>
-											</div>
-											<div className="flex flex-wrap items-center gap-2">
-												{option.values.map((value, valueIndex) => (
-													<Badge
-														key={`${option.id}-${value}`}
-														variant="secondary"
-														className="px-3 py-1.5 text-sm font-normal gap-1.5 bg-muted hover:bg-muted"
-													>
-														{value}
-														<button
-															type="button"
-															onClick={() =>
-																removeValueFromVariant(option.id, valueIndex)
-															}
-															className="ml-1 hover:text-destructive"
-														>
-															<IconX className="size-3.5" />
-														</button>
-													</Badge>
-												))}
-												<VariantValueInput
-													optionName={option.name}
-													onAdd={(value) => addValueToVariant(option.id, value)}
-												/>
-											</div>
-										</div>
 									))}
+
+									{/* Add Video Button */}
+									<Tooltip>
+										<TooltipTrigger asChild>
+											<Button
+												type="button"
+												variant="outline"
+												onClick={() => videoInputRef.current?.click()}
+												className="aspect-4/5 w-28 h-auto shrink-0 flex-col gap-2 rounded-xl border-2 border-dashed border-primary/30 bg-primary/5 hover:border-primary/50 hover:bg-primary/10"
+											>
+												<IconPlus className="size-6 text-primary" />
+											</Button>
+										</TooltipTrigger>
+										<TooltipContent>Add video</TooltipContent>
+									</Tooltip>
 								</div>
-							)}
-						</div>
+							</div>
 
-						{/* Generate Variants Button */}
-						{variantOptions.length > 0 &&
-							variantOptions.some((o) => o.values.length > 0) && (
-								<div className="flex justify-end">
-									<Button
-										type="button"
-										variant="secondary"
-										size="sm"
-										onClick={generateVariantsFromOptions}
-									>
-										<IconPlus className="size-4 mr-1" />
-										Gerar Variações
-									</Button>
-								</div>
-							)}
+							<p className="text-muted-foreground text-xs">
+								Click on a video to preview. Supports YouTube, Vimeo, or upload
+								video files directly.
+							</p>
+						</CardContent>
+					</Card>
 
-						<Separator />
+					{/* Video Preview Modal */}
+					<VideoPreviewModal
+						isOpen={!!previewVideo}
+						onClose={() => setPreviewVideo(null)}
+						videoUrl={previewVideo?.url || ""}
+						title={previewVideo?.title || ""}
+						thumbnail={previewVideo?.thumbnail}
+					/>
 
-						{/* Variação Table */}
-						<div className="space-y-3">
-							<Label className="text-base font-semibold">Variação</Label>
-
-							{productVariants.length === 0 ? (
-								<div className="rounded-lg border border-dashed p-8 text-center">
-									<div className="flex size-12 items-center justify-center rounded-full bg-muted mx-auto mb-3">
-										<IconPlus className="size-6 text-muted-foreground" />
-									</div>
-									<p className="text-muted-foreground text-sm mb-3">
-										Nenhuma variação configurada. Adicione propriedades acima e
-										clique em "Gerar Variações".
-									</p>
+					{/* Variações (Variants) */}
+					<Card>
+						<CardHeader>
+							<CardTitle className="flex items-center gap-2">
+								<span className="flex size-6 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">
+									4
+								</span>
+								Variações
+							</CardTitle>
+							<CardDescription>
+								Configure as propriedades e variações do produto
+							</CardDescription>
+						</CardHeader>
+						<CardContent className="space-y-6">
+							{/* Propriedades Section */}
+							<div className="space-y-4">
+								<div className="flex items-center justify-between">
+									<Label className="text-base font-semibold">
+										Propriedades
+									</Label>
 									<Button
 										type="button"
 										variant="outline"
 										size="sm"
-										onClick={addProductVariant}
+										onClick={addVariantOption}
 									>
 										<IconPlus className="size-4 mr-1" />
-										Adicionar Manualmente
+										Adicionar Propriedade
 									</Button>
 								</div>
-							) : (
-								<div className="rounded-lg border overflow-hidden">
-									{/* Table Header */}
-									<div className="grid grid-cols-[1fr_120px_120px_120px_60px] gap-3 px-4 py-3 bg-muted/50 border-b text-sm font-medium text-muted-foreground">
-										<span>Variação</span>
-										<span>Estoque</span>
-										<span>Preço</span>
-										<span>Peso</span>
-										<span>Ações</span>
+
+								{variantOptions.length === 0 ? (
+									<div className="rounded-lg border border-dashed p-6 text-center">
+										<p className="text-muted-foreground text-sm">
+											Adicione propriedades como Cor, Tamanho, Material, etc.
+										</p>
 									</div>
-
-									{/* Table Body */}
-									<div className="divide-y">
-										{productVariants.map((variant) => {
-											// Use selected image or fall back to principal (first) image
-											const selectedImage = variant.imageId
-												? productImages.find(
-														(img) => img.id === variant.imageId,
-													)
-												: productImages[0]; // Default to principal image
-
-											return (
-												<div
-													key={variant.id}
-													className="grid grid-cols-[1fr_120px_120px_120px_60px] gap-3 px-4 py-3 items-center hover:bg-muted/30 transition-colors"
-												>
-													{/* Variant Name with Image Selector */}
-													<div className="flex items-center gap-3">
-														{/* Image Thumbnail - Click to open drawer */}
-														<button
-															type="button"
-															onClick={() =>
-																setImagePickerVariantId(variant.id)
-															}
-															className="size-14 rounded-lg border-2 border-muted-foreground/30 bg-muted flex items-center justify-center overflow-hidden hover:border-primary/50 transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+								) : (
+									<div className="space-y-4">
+										{variantOptions.map((option) => (
+											<div key={option.id} className="space-y-2">
+												<div className="flex items-center justify-between">
+													<Select
+														value={option.name}
+														onValueChange={(value) =>
+															updateVariantOption(option.id, { name: value })
+														}
+													>
+														<SelectTrigger className="w-32 h-8">
+															<SelectValue placeholder="Tipo" />
+														</SelectTrigger>
+														<SelectContent>
+															<SelectItem value="Color">Cor</SelectItem>
+															<SelectItem value="Size">Tamanho</SelectItem>
+															<SelectItem value="Material">Material</SelectItem>
+															<SelectItem value="Style">Estilo</SelectItem>
+															<SelectItem value="Weight">Peso</SelectItem>
+														</SelectContent>
+													</Select>
+													<Button
+														type="button"
+														variant="ghost"
+														size="icon-sm"
+														className="text-muted-foreground hover:text-destructive"
+														onClick={() => removeVariantOption(option.id)}
+													>
+														<IconTrash className="size-4" />
+													</Button>
+												</div>
+												<div className="flex flex-wrap items-center gap-2">
+													{option.values.map((value, valueIndex) => (
+														<Badge
+															key={`${option.id}-${value}`}
+															variant="secondary"
+															className="px-3 py-1.5 text-sm font-normal gap-1.5 bg-muted hover:bg-muted"
 														>
-															{selectedImage ? (
-																<img
-																	src={selectedImage.preview}
-																	alt={variant.title}
-																	className="size-full object-cover"
-																/>
-															) : (
-																<IconCamera className="size-5 text-muted-foreground/50" />
-															)}
-														</button>
-														{/* Variant Title */}
-														<span className="font-medium text-primary">
-															{variant.title || "Sem título"}
-														</span>
-													</div>
-
-													{/* Stock Input */}
-													<div className="relative">
-														<Input
-															type="text"
-															placeholder="∞"
-															value={variant.stock || ""}
-															onChange={(e) =>
-																updateProductVariant(variant.id, {
-																	stock: e.target.value,
-																})
-															}
-															className="h-9 text-center"
-														/>
-													</div>
-
-													{/* Price Input */}
-													<div className="relative">
-														<span className="text-muted-foreground absolute left-2.5 top-1/2 -translate-y-1/2 text-xs">
-															R$
-														</span>
-														<Input
-															type="number"
-															step="0.01"
-															placeholder="0.00"
-															value={variant.priceBrl}
-															onChange={(e) =>
-																updateProductVariant(variant.id, {
-																	priceBrl: e.target.value,
-																})
-															}
-															className="h-9 pl-8"
-														/>
-													</div>
-
-													{/* Weight Input */}
-													<div className="relative">
-														<Input
-															type="number"
-															step="0.1"
-															placeholder="0.0"
-															value={variant.weightKg || ""}
-															onChange={(e) =>
-																updateProductVariant(variant.id, {
-																	weightKg: e.target.value,
-																})
-															}
-															className="h-9 pr-8"
-														/>
-														<span className="text-muted-foreground absolute right-2.5 top-1/2 -translate-y-1/2 text-xs">
-															kg
-														</span>
-													</div>
-
-													{/* Actions */}
-													<div className="flex justify-center">
-														<Tooltip>
-															<TooltipTrigger asChild>
-																<Button
-																	type="button"
-																	variant="ghost"
-																	size="icon"
-																	className="size-9 rounded-full border"
-																	onClick={() => setEditVariantId(variant.id)}
-																>
-																	<IconEdit className="size-4" />
-																</Button>
-															</TooltipTrigger>
-															<TooltipContent>Editar variação</TooltipContent>
-														</Tooltip>
-													</div>
+															{value}
+															<button
+																type="button"
+																onClick={() =>
+																	removeValueFromVariant(option.id, valueIndex)
+																}
+																className="ml-1 hover:text-destructive"
+															>
+																<IconX className="size-3.5" />
+															</button>
+														</Badge>
+													))}
+													<VariantValueInput
+														optionName={option.name}
+														onAdd={(value) =>
+															addValueToVariant(option.id, value)
+														}
+													/>
 												</div>
-											);
-										})}
-									</div>
-								</div>
-							)}
-						</div>
-
-						{/* Summary */}
-						{productVariants.length > 0 && (
-							<div className="flex items-center justify-between pt-2">
-								<div className="text-sm text-muted-foreground">
-									<span className="font-medium text-foreground">
-										{productVariants.length}
-									</span>{" "}
-									variação{productVariants.length > 1 ? "ões" : ""} configurada
-									{productVariants.length > 1 ? "s" : ""}
-								</div>
-								<Button
-									type="button"
-									variant="ghost"
-									size="sm"
-									className="text-destructive hover:text-destructive"
-									onClick={() => setProductVariants([])}
-								>
-									<IconTrash className="size-4 mr-1" />
-									Limpar Todas
-								</Button>
-							</div>
-						)}
-					</CardContent>
-				</Card>
-
-				{/* Image Picker Drawer */}
-				<Drawer
-					open={!!imagePickerVariantId}
-					onOpenChange={(open) => {
-						if (!open) setImagePickerVariantId(null);
-					}}
-				>
-					<DrawerContent>
-						<DrawerHeader>
-							<DrawerTitle>Selecionar Imagem</DrawerTitle>
-							<DrawerDescription>
-								{imagePickerVariantId &&
-									(() => {
-										const variant = productVariants.find(
-											(v) => v.id === imagePickerVariantId,
-										);
-										return variant
-											? `Escolha uma imagem para: ${variant.title || "Variação"}`
-											: "Escolha uma imagem para esta variação";
-									})()}
-							</DrawerDescription>
-						</DrawerHeader>
-
-						<div className="px-4 pb-4">
-							{productImages.length === 0 ? (
-								<div className="flex flex-col items-center justify-center py-12 text-center">
-									<IconCamera className="size-12 text-muted-foreground/50 mb-4" />
-									<p className="text-muted-foreground">
-										Nenhuma imagem disponível.
-									</p>
-									<p className="text-muted-foreground text-sm">
-										Adicione imagens na seção "Imagens do Produto".
-									</p>
-								</div>
-							) : (
-								<div className="grid grid-cols-3 gap-3">
-									{productImages.map((img, imgIndex) => {
-										const currentVariant = productVariants.find(
-											(v) => v.id === imagePickerVariantId,
-										);
-										const isSelected =
-											currentVariant?.imageId === img.id ||
-											(!currentVariant?.imageId && imgIndex === 0);
-
-										return (
-											<button
-												key={img.id}
-												type="button"
-												onClick={() => {
-													if (imagePickerVariantId) {
-														updateProductVariant(imagePickerVariantId, {
-															imageId: img.id,
-														});
-														setImagePickerVariantId(null);
-													}
-												}}
-												className={`relative aspect-square rounded-xl overflow-hidden border-3 transition-all cursor-pointer hover:scale-[1.02] ${
-													isSelected
-														? "border-primary ring-4 ring-primary/30"
-														: "border-transparent hover:border-primary/50"
-												}`}
-											>
-												<img
-													src={img.preview}
-													alt={img.name}
-													className="size-full object-cover"
-												/>
-												{imgIndex === 0 && (
-													<Badge className="absolute top-2 left-2 bg-primary text-primary-foreground text-xs">
-														Principal
-													</Badge>
-												)}
-												{isSelected && (
-													<div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
-														<div className="size-8 rounded-full bg-primary flex items-center justify-center">
-															<IconX className="size-5 text-primary-foreground rotate-45" />
-														</div>
-													</div>
-												)}
-												<div className="absolute bottom-0 inset-x-0 bg-linear-to-t from-black/70 to-transparent p-2">
-													<p className="text-white text-xs truncate">
-														{img.name}
-													</p>
-												</div>
-											</button>
-										);
-									})}
-								</div>
-							)}
-						</div>
-
-						<DrawerFooter>
-							<DrawerClose asChild>
-								<Button variant="outline">Cancelar</Button>
-							</DrawerClose>
-						</DrawerFooter>
-					</DrawerContent>
-				</Drawer>
-
-				{/* Variant Edit Drawer */}
-				<Drawer
-					direction="right"
-					open={!!editVariantId}
-					onOpenChange={(open) => {
-						if (!open) setEditVariantId(null);
-					}}
-				>
-					<DrawerContent className="h-full w-full max-w-md ml-auto">
-						{(() => {
-							const editingVariant = productVariants.find(
-								(v) => v.id === editVariantId,
-							);
-							const currentIndex = productVariants.findIndex(
-								(v) => v.id === editVariantId,
-							);
-							const prevVariant =
-								currentIndex > 0 ? productVariants[currentIndex - 1] : null;
-							const nextVariant =
-								currentIndex < productVariants.length - 1
-									? productVariants[currentIndex + 1]
-									: null;
-
-							if (!editingVariant) return null;
-
-							// Calculate margin
-							const cost = Number(editingVariant.costBrl) || 0;
-							const price = Number(editingVariant.priceBrl) || 0;
-							const margin =
-								price > 0 ? Math.round(((price - cost) / price) * 100) : 0;
-
-							return (
-								<>
-									<DrawerHeader className="border-b">
-										<div className="flex items-center justify-between">
-											<DrawerClose asChild>
-												<Button variant="ghost" size="icon">
-													<IconChevronLeft className="size-5" />
-												</Button>
-											</DrawerClose>
-											<DrawerTitle className="text-xl font-bold">
-												{editingVariant.title || "Variação"}
-											</DrawerTitle>
-											<div className="flex items-center gap-1">
-												<Button
-													variant="ghost"
-													size="icon"
-													disabled={!prevVariant}
-													onClick={() =>
-														prevVariant && setEditVariantId(prevVariant.id)
-													}
-												>
-													<IconChevronLeft className="size-4" />
-												</Button>
-												<Button
-													variant="ghost"
-													size="icon"
-													disabled={!nextVariant}
-													onClick={() =>
-														nextVariant && setEditVariantId(nextVariant.id)
-													}
-												>
-													<IconChevronRight className="size-4" />
-												</Button>
 											</div>
-										</div>
-									</DrawerHeader>
+										))}
+									</div>
+								)}
+							</div>
 
-									<div className="flex-1 overflow-y-auto p-4 space-y-6">
-										{/* Preços Section */}
-										<Card>
-											<CardHeader className="pb-4">
-												<CardTitle className="text-lg">Preços</CardTitle>
-											</CardHeader>
-											<CardContent className="space-y-4">
-												<div className="grid grid-cols-2 gap-4">
-													<div className="space-y-2">
-														<Label className="text-sm">Preço de venda</Label>
+							{/* Generate Variants Button */}
+							{variantOptions.length > 0 &&
+								variantOptions.some((o) => o.values.length > 0) && (
+									<div className="flex justify-end">
+										<Button
+											type="button"
+											variant="secondary"
+											size="sm"
+											onClick={generateVariantsFromOptions}
+										>
+											<IconPlus className="size-4 mr-1" />
+											Gerar Variações
+										</Button>
+									</div>
+								)}
+
+							<Separator />
+
+							{/* Variação Table */}
+							<div className="space-y-3">
+								<Label className="text-base font-semibold">Variação</Label>
+
+								{productVariants.length === 0 ? (
+									<div className="rounded-lg border border-dashed p-8 text-center">
+										<div className="flex size-12 items-center justify-center rounded-full bg-muted mx-auto mb-3">
+											<IconPlus className="size-6 text-muted-foreground" />
+										</div>
+										<p className="text-muted-foreground text-sm mb-3">
+											Nenhuma variação configurada. Adicione propriedades acima
+											e clique em "Gerar Variações".
+										</p>
+										<Button
+											type="button"
+											variant="outline"
+											size="sm"
+											onClick={addProductVariant}
+										>
+											<IconPlus className="size-4 mr-1" />
+											Adicionar Manualmente
+										</Button>
+									</div>
+								) : (
+									<div className="rounded-lg border overflow-hidden">
+										{/* Table Header */}
+										<div className="grid grid-cols-[1fr_120px_120px_120px_60px] gap-3 px-4 py-3 bg-muted/50 border-b text-sm font-medium text-muted-foreground">
+											<span>Variação</span>
+											<span>Estoque</span>
+											<span>Preço</span>
+											<span>Peso</span>
+											<span>Ações</span>
+										</div>
+
+										{/* Table Body */}
+										<div className="divide-y">
+											{productVariants.map((variant) => {
+												// Use selected image or fall back to principal (first) image
+												const selectedImage = variant.imageId
+													? images.images.find(
+															(img) => img.id === variant.imageId,
+														)
+													: images.images[0]; // Default to principal image
+
+												return (
+													<div
+														key={variant.id}
+														className="grid grid-cols-[1fr_120px_120px_120px_60px] gap-3 px-4 py-3 items-center hover:bg-muted/30 transition-colors"
+													>
+														{/* Variant Name with Image Selector */}
+														<div className="flex items-center gap-3">
+															{/* Image Thumbnail - Click to open drawer */}
+															<button
+																type="button"
+																onClick={() =>
+																	setImagePickerVariantId(variant.id)
+																}
+																className="size-14 rounded-lg border-2 border-muted-foreground/30 bg-muted flex items-center justify-center overflow-hidden hover:border-primary/50 transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+															>
+																{selectedImage ? (
+																	<img
+																		src={selectedImage.preview}
+																		alt={variant.title}
+																		className="size-full object-cover"
+																	/>
+																) : (
+																	<IconCamera className="size-5 text-muted-foreground/50" />
+																)}
+															</button>
+															{/* Variant Title */}
+															<span className="font-medium text-primary">
+																{variant.title || "Sem título"}
+															</span>
+														</div>
+
+														{/* Stock Input */}
 														<div className="relative">
-															<span className="text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2 text-sm">
+															<Input
+																type="text"
+																placeholder="∞"
+																value={variant.stock || ""}
+																onChange={(e) =>
+																	updateProductVariant(variant.id, {
+																		stock: e.target.value,
+																	})
+																}
+																className="h-9 text-center"
+															/>
+														</div>
+
+														{/* Price Input */}
+														<div className="relative">
+															<span className="text-muted-foreground absolute left-2.5 top-1/2 -translate-y-1/2 text-xs">
 																R$
 															</span>
 															<Input
 																type="number"
 																step="0.01"
 																placeholder="0.00"
-																value={editingVariant.priceBrl}
+																value={variant.priceBrl}
 																onChange={(e) =>
-																	updateProductVariant(editingVariant.id, {
+																	updateProductVariant(variant.id, {
 																		priceBrl: e.target.value,
 																	})
 																}
-																className="pl-10"
+																className="h-9 pl-8"
 															/>
 														</div>
-													</div>
-													<div className="space-y-2">
-														<Label className="text-sm">Preço promocional</Label>
-														<div className="relative">
-															<span className="text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2 text-sm">
-																R$
-															</span>
-															<Input
-																type="number"
-																step="0.01"
-																placeholder="0.00"
-																value={editingVariant.compareAtBrl}
-																onChange={(e) =>
-																	updateProductVariant(editingVariant.id, {
-																		compareAtBrl: e.target.value,
-																	})
-																}
-																className="pl-10"
-															/>
-														</div>
-													</div>
-												</div>
 
-												<div className="flex items-center gap-2">
-													<Checkbox
-														id="show-price"
-														checked={editingVariant.showPrice}
-														onCheckedChange={(checked) =>
-															updateProductVariant(editingVariant.id, {
-																showPrice: !!checked,
-															})
-														}
-													/>
-													<Label htmlFor="show-price" className="text-sm">
-														Exibir o preço na loja
-													</Label>
-												</div>
-
-												<div className="grid grid-cols-2 gap-4">
-													<div className="space-y-2">
-														<Label className="text-sm">Custo</Label>
-														<div className="relative">
-															<span className="text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2 text-sm">
-																R$
-															</span>
-															<Input
-																type="number"
-																step="0.01"
-																placeholder="0.00"
-																value={editingVariant.costBrl}
-																onChange={(e) =>
-																	updateProductVariant(editingVariant.id, {
-																		costBrl: e.target.value,
-																	})
-																}
-																className="pl-10"
-															/>
-														</div>
-													</div>
-													<div className="space-y-2">
-														<div className="flex items-center gap-1">
-															<Label className="text-sm">Margem de lucro</Label>
-															<Tooltip>
-																<TooltipTrigger>
-																	<span className="text-muted-foreground text-xs cursor-help">
-																		ⓘ
-																	</span>
-																</TooltipTrigger>
-																<TooltipContent>
-																	Calculado automaticamente com base no preço e
-																	custo
-																</TooltipContent>
-															</Tooltip>
-														</div>
-														<Input
-															type="text"
-															value={`${margin} %`}
-															disabled
-															className="bg-muted"
-														/>
-													</div>
-												</div>
-
-												<p className="text-muted-foreground text-xs">
-													É para uso interno, os seus clientes não o verão na
-													loja.
-												</p>
-											</CardContent>
-										</Card>
-
-										{/* Códigos Section */}
-										<Card>
-											<CardHeader className="pb-4">
-												<CardTitle className="text-lg">Códigos</CardTitle>
-											</CardHeader>
-											<CardContent className="space-y-4">
-												<div className="space-y-2">
-													<Label className="text-sm">SKU</Label>
-													<Input
-														placeholder="SENDIT-BP-2026"
-														value={editingVariant.sku}
-														onChange={(e) =>
-															updateProductVariant(editingVariant.id, {
-																sku: e.target.value,
-															})
-														}
-													/>
-													<p className="text-muted-foreground text-xs">
-														SKU é um código que você cria internamente para ter
-														o controle dos seus produtos com variações.
-													</p>
-												</div>
-
-												<div className="space-y-2">
-													<Label className="text-sm">Código de barras</Label>
-													<Input
-														placeholder=""
-														value={editingVariant.barcode}
-														onChange={(e) =>
-															updateProductVariant(editingVariant.id, {
-																barcode: e.target.value,
-															})
-														}
-													/>
-													<p className="text-muted-foreground text-xs">
-														O código de barras é composto por 13 números e serve
-														para identificar um produto.
-													</p>
-												</div>
-											</CardContent>
-										</Card>
-
-										{/* Peso e dimensões Section */}
-										<Card>
-											<CardHeader className="pb-4">
-												<CardTitle className="text-lg">
-													Peso e dimensões
-												</CardTitle>
-												<CardDescription>
-													Preencha os dados para calcular o custo de envio dos
-													produtos e mostrar os meios de envio na sua loja.
-												</CardDescription>
-											</CardHeader>
-											<CardContent className="space-y-4">
-												<div className="grid grid-cols-2 gap-4">
-													<div className="space-y-2">
-														<Label className="text-sm">Peso</Label>
+														{/* Weight Input */}
 														<div className="relative">
 															<Input
 																type="number"
-																step="0.001"
-																placeholder="0.000"
-																value={editingVariant.weightKg}
+																step="0.1"
+																placeholder="0.0"
+																value={variant.weightKg || ""}
 																onChange={(e) =>
-																	updateProductVariant(editingVariant.id, {
+																	updateProductVariant(variant.id, {
 																		weightKg: e.target.value,
 																	})
 																}
-																className="pr-10"
+																className="h-9 pr-8"
 															/>
-															<span className="text-muted-foreground absolute right-3 top-1/2 -translate-y-1/2 text-sm">
+															<span className="text-muted-foreground absolute right-2.5 top-1/2 -translate-y-1/2 text-xs">
 																kg
 															</span>
 														</div>
-													</div>
-													<div className="space-y-2">
-														<Label className="text-sm">Comprimento</Label>
-														<div className="relative">
-															<Input
-																type="number"
-																step="0.01"
-																placeholder="0.00"
-																value={editingVariant.lengthCm}
-																onChange={(e) =>
-																	updateProductVariant(editingVariant.id, {
-																		lengthCm: e.target.value,
-																	})
-																}
-																className="pr-10"
-															/>
-															<span className="text-muted-foreground absolute right-3 top-1/2 -translate-y-1/2 text-sm">
-																cm
-															</span>
-														</div>
-													</div>
-												</div>
 
-												<div className="grid grid-cols-2 gap-4">
-													<div className="space-y-2">
-														<Label className="text-sm">Largura</Label>
-														<div className="relative">
-															<Input
-																type="number"
-																step="0.01"
-																placeholder="0.00"
-																value={editingVariant.widthCm}
-																onChange={(e) =>
-																	updateProductVariant(editingVariant.id, {
-																		widthCm: e.target.value,
-																	})
-																}
-																className="pr-10"
-															/>
-															<span className="text-muted-foreground absolute right-3 top-1/2 -translate-y-1/2 text-sm">
-																cm
-															</span>
+														{/* Actions */}
+														<div className="flex justify-center">
+															<Tooltip>
+																<TooltipTrigger asChild>
+																	<Button
+																		type="button"
+																		variant="ghost"
+																		size="icon"
+																		className="size-9 rounded-full border"
+																		onClick={() => setEditVariantId(variant.id)}
+																	>
+																		<IconEdit className="size-4" />
+																	</Button>
+																</TooltipTrigger>
+																<TooltipContent>Editar variação</TooltipContent>
+															</Tooltip>
 														</div>
 													</div>
-													<div className="space-y-2">
-														<Label className="text-sm">Altura</Label>
-														<div className="relative">
-															<Input
-																type="number"
-																step="0.01"
-																placeholder="0.00"
-																value={editingVariant.heightCm}
-																onChange={(e) =>
-																	updateProductVariant(editingVariant.id, {
-																		heightCm: e.target.value,
-																	})
-																}
-																className="pr-10"
-															/>
-															<span className="text-muted-foreground absolute right-3 top-1/2 -translate-y-1/2 text-sm">
-																cm
-															</span>
-														</div>
-													</div>
-												</div>
-											</CardContent>
-										</Card>
+												);
+											})}
+										</div>
 									</div>
-
-									<DrawerFooter className="border-t">
-										<DrawerClose asChild>
-											<Button disabled={isPending}>
-												{isPending ? "Salvando..." : "Salvar"}
-											</Button>
-										</DrawerClose>
-									</DrawerFooter>
-								</>
-							);
-						})()}
-					</DrawerContent>
-				</Drawer>
-
-				{/* Inventory & Dimensions */}
-				<Card>
-					<CardHeader>
-						<CardTitle className="flex items-center gap-2">
-							<span className="flex size-6 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">
-								5
-							</span>
-							Inventory & Dimensions
-						</CardTitle>
-						<CardDescription>
-							Manage stock levels and product measurements
-						</CardDescription>
-					</CardHeader>
-					<CardContent className="space-y-6">
-						{/* Stock & Status */}
-						<div className="grid grid-cols-2 gap-4">
-							<div className="space-y-2">
-								<Label htmlFor="stock">Quantidade em Estoque</Label>
-								<Input
-									id="stock"
-									type="number"
-									placeholder="0"
-									value={stock}
-									onChange={(e) => setStock(e.target.value)}
-								/>
+								)}
 							</div>
 
-							<div className="space-y-2">
-								<Label htmlFor="status">Status do Produto</Label>
-								<Select value={status} onValueChange={setStatus}>
-									<SelectTrigger id="status" className="w-full">
-										<SelectValue placeholder="Selecione o status" />
-									</SelectTrigger>
-									<SelectContent>
-										<SelectItem value="draft">
-											<div className="flex items-center gap-2">
-												<span className="size-2 rounded-full bg-yellow-500" />
-												Rascunho
-											</div>
-										</SelectItem>
-										<SelectItem value="active">
-											<div className="flex items-center gap-2">
-												<span className="size-2 rounded-full bg-emerald-500" />
-												Ativo
-											</div>
-										</SelectItem>
-										<SelectItem value="archived">
-											<div className="flex items-center gap-2">
-												<span className="size-2 rounded-full bg-gray-500" />
-												Arquivado
-											</div>
-										</SelectItem>
-									</SelectContent>
-								</Select>
-							</div>
-						</div>
-
-						<Separator />
-
-						{/* Dimensions & Weight Section */}
-						<div className="space-y-4">
-							<div className="flex items-center gap-2">
-								<div className="flex size-5 items-center justify-center rounded bg-purple-100 dark:bg-purple-900/30">
-									<span className="text-purple-600 dark:text-purple-400 text-xs font-semibold">
-										⚖
-									</span>
+							{/* Summary */}
+							{productVariants.length > 0 && (
+								<div className="flex items-center justify-between pt-2">
+									<div className="text-sm text-muted-foreground">
+										<span className="font-medium text-foreground">
+											{productVariants.length}
+										</span>{" "}
+										variação{productVariants.length > 1 ? "ões" : ""}{" "}
+										configurada
+										{productVariants.length > 1 ? "s" : ""}
+									</div>
+									<Button
+										type="button"
+										variant="ghost"
+										size="sm"
+										className="text-destructive hover:text-destructive"
+										onClick={() => setProductVariants([])}
+									>
+										<IconTrash className="size-4 mr-1" />
+										Limpar Todas
+									</Button>
 								</div>
-								<Label className="text-sm font-semibold">
-									Dimensões e Peso
-								</Label>
+							)}
+						</CardContent>
+					</Card>
+
+					{/* Image Picker Drawer */}
+					<Drawer
+						open={!!imagePickerVariantId}
+						onOpenChange={(open) => {
+							if (!open) setImagePickerVariantId(null);
+						}}
+					>
+						<DrawerContent>
+							<DrawerHeader>
+								<DrawerTitle>Selecionar Imagem</DrawerTitle>
+								<DrawerDescription>
+									{imagePickerVariantId &&
+										(() => {
+											const variant = productVariants.find(
+												(v) => v.id === imagePickerVariantId,
+											);
+											return variant
+												? `Escolha uma imagem para: ${variant.title || "Variação"}`
+												: "Escolha uma imagem para esta variação";
+										})()}
+								</DrawerDescription>
+							</DrawerHeader>
+
+							<div className="px-4 pb-4">
+								{images.images.length === 0 ? (
+									<div className="flex flex-col items-center justify-center py-12 text-center">
+										<IconCamera className="size-12 text-muted-foreground/50 mb-4" />
+										<p className="text-muted-foreground">
+											Nenhuma imagem disponível.
+										</p>
+										<p className="text-muted-foreground text-sm">
+											Adicione imagens na seção "Imagens do Produto".
+										</p>
+									</div>
+								) : (
+									<div className="grid grid-cols-3 gap-3">
+										{images.images.map((img, imgIndex) => {
+											const currentVariant = productVariants.find(
+												(v) => v.id === imagePickerVariantId,
+											);
+											const isSelected =
+												currentVariant?.imageId === img.id ||
+												(!currentVariant?.imageId && imgIndex === 0);
+
+											return (
+												<button
+													key={img.id}
+													type="button"
+													onClick={() => {
+														if (imagePickerVariantId) {
+															updateProductVariant(imagePickerVariantId, {
+																imageId: img.id,
+															});
+															setImagePickerVariantId(null);
+														}
+													}}
+													className={`relative aspect-square rounded-xl overflow-hidden border-3 transition-all cursor-pointer hover:scale-[1.02] ${
+														isSelected
+															? "border-primary ring-4 ring-primary/30"
+															: "border-transparent hover:border-primary/50"
+													}`}
+												>
+													<img
+														src={img.preview}
+														alt={img.name}
+														className="size-full object-cover"
+													/>
+													{imgIndex === 0 && (
+														<Badge className="absolute top-2 left-2 bg-primary text-primary-foreground text-xs">
+															Principal
+														</Badge>
+													)}
+													{isSelected && (
+														<div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
+															<div className="size-8 rounded-full bg-primary flex items-center justify-center">
+																<IconX className="size-5 text-primary-foreground rotate-45" />
+															</div>
+														</div>
+													)}
+													<div className="absolute bottom-0 inset-x-0 bg-linear-to-t from-black/70 to-transparent p-2">
+														<p className="text-white text-xs truncate">
+															{img.name}
+														</p>
+													</div>
+												</button>
+											);
+										})}
+									</div>
+								)}
 							</div>
 
-							<div className="space-y-4">
+							<DrawerFooter>
+								<DrawerClose asChild>
+									<Button variant="outline">Cancelar</Button>
+								</DrawerClose>
+							</DrawerFooter>
+						</DrawerContent>
+					</Drawer>
+
+					{/* Variant Edit Drawer */}
+					<Drawer
+						direction="right"
+						open={!!editVariantId}
+						onOpenChange={(open) => {
+							if (!open) setEditVariantId(null);
+						}}
+					>
+						<DrawerContent className="h-full w-full max-w-md ml-auto">
+							{(() => {
+								const editingVariant = productVariants.find(
+									(v) => v.id === editVariantId,
+								);
+								const currentIndex = productVariants.findIndex(
+									(v) => v.id === editVariantId,
+								);
+								const prevVariant =
+									currentIndex > 0 ? productVariants[currentIndex - 1] : null;
+								const nextVariant =
+									currentIndex < productVariants.length - 1
+										? productVariants[currentIndex + 1]
+										: null;
+
+								if (!editingVariant) return null;
+
+								// Calculate margin
+								const cost = Number(editingVariant.costBrl) || 0;
+								const price = Number(editingVariant.priceBrl) || 0;
+								const margin =
+									price > 0 ? Math.round(((price - cost) / price) * 100) : 0;
+
+								return (
+									<>
+										<DrawerHeader className="border-b">
+											<div className="flex items-center justify-between">
+												<DrawerClose asChild>
+													<Button variant="ghost" size="icon">
+														<IconChevronLeft className="size-5" />
+													</Button>
+												</DrawerClose>
+												<DrawerTitle className="text-xl font-bold">
+													{editingVariant.title || "Variação"}
+												</DrawerTitle>
+												<div className="flex items-center gap-1">
+													<Button
+														variant="ghost"
+														size="icon"
+														disabled={!prevVariant}
+														onClick={() =>
+															prevVariant && setEditVariantId(prevVariant.id)
+														}
+													>
+														<IconChevronLeft className="size-4" />
+													</Button>
+													<Button
+														variant="ghost"
+														size="icon"
+														disabled={!nextVariant}
+														onClick={() =>
+															nextVariant && setEditVariantId(nextVariant.id)
+														}
+													>
+														<IconChevronRight className="size-4" />
+													</Button>
+												</div>
+											</div>
+										</DrawerHeader>
+
+										<div className="flex-1 overflow-y-auto p-4 space-y-6">
+											{/* Preços Section */}
+											<Card>
+												<CardHeader className="pb-4">
+													<CardTitle className="text-lg">Preços</CardTitle>
+												</CardHeader>
+												<CardContent className="space-y-4">
+													<div className="grid grid-cols-2 gap-4">
+														<div className="space-y-2">
+															<Label className="text-sm">Preço de venda</Label>
+															<div className="relative">
+																<span className="text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2 text-sm">
+																	R$
+																</span>
+																<Input
+																	type="number"
+																	step="0.01"
+																	placeholder="0.00"
+																	value={editingVariant.priceBrl}
+																	onChange={(e) =>
+																		updateProductVariant(editingVariant.id, {
+																			priceBrl: e.target.value,
+																		})
+																	}
+																	className="pl-10"
+																/>
+															</div>
+														</div>
+														<div className="space-y-2">
+															<Label className="text-sm">
+																Preço promocional
+															</Label>
+															<div className="relative">
+																<span className="text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2 text-sm">
+																	R$
+																</span>
+																<Input
+																	type="number"
+																	step="0.01"
+																	placeholder="0.00"
+																	value={editingVariant.compareAtBrl}
+																	onChange={(e) =>
+																		updateProductVariant(editingVariant.id, {
+																			compareAtBrl: e.target.value,
+																		})
+																	}
+																	className="pl-10"
+																/>
+															</div>
+														</div>
+													</div>
+
+													<div className="flex items-center gap-2">
+														<Checkbox
+															id="show-price"
+															checked={editingVariant.showPrice}
+															onCheckedChange={(checked) =>
+																updateProductVariant(editingVariant.id, {
+																	showPrice: !!checked,
+																})
+															}
+														/>
+														<Label htmlFor="show-price" className="text-sm">
+															Exibir o preço na loja
+														</Label>
+													</div>
+
+													<div className="grid grid-cols-2 gap-4">
+														<div className="space-y-2">
+															<Label className="text-sm">Custo</Label>
+															<div className="relative">
+																<span className="text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2 text-sm">
+																	R$
+																</span>
+																<Input
+																	type="number"
+																	step="0.01"
+																	placeholder="0.00"
+																	value={editingVariant.costBrl}
+																	onChange={(e) =>
+																		updateProductVariant(editingVariant.id, {
+																			costBrl: e.target.value,
+																		})
+																	}
+																	className="pl-10"
+																/>
+															</div>
+														</div>
+														<div className="space-y-2">
+															<div className="flex items-center gap-1">
+																<Label className="text-sm">
+																	Margem de lucro
+																</Label>
+																<Tooltip>
+																	<TooltipTrigger>
+																		<span className="text-muted-foreground text-xs cursor-help">
+																			ⓘ
+																		</span>
+																	</TooltipTrigger>
+																	<TooltipContent>
+																		Calculado automaticamente com base no preço
+																		e custo
+																	</TooltipContent>
+																</Tooltip>
+															</div>
+															<Input
+																type="text"
+																value={`${margin} %`}
+																disabled
+																className="bg-muted"
+															/>
+														</div>
+													</div>
+
+													<p className="text-muted-foreground text-xs">
+														É para uso interno, os seus clientes não o verão na
+														loja.
+													</p>
+												</CardContent>
+											</Card>
+
+											{/* Códigos Section */}
+											<Card>
+												<CardHeader className="pb-4">
+													<CardTitle className="text-lg">Códigos</CardTitle>
+												</CardHeader>
+												<CardContent className="space-y-4">
+													<div className="space-y-2">
+														<Label className="text-sm">SKU</Label>
+														<Input
+															placeholder="SENDIT-BP-2026"
+															value={editingVariant.sku}
+															onChange={(e) =>
+																updateProductVariant(editingVariant.id, {
+																	sku: e.target.value,
+																})
+															}
+														/>
+														<p className="text-muted-foreground text-xs">
+															SKU é um código que você cria internamente para
+															ter o controle dos seus produtos com variações.
+														</p>
+													</div>
+
+													<div className="space-y-2">
+														<Label className="text-sm">Código de barras</Label>
+														<Input
+															placeholder=""
+															value={editingVariant.barcode}
+															onChange={(e) =>
+																updateProductVariant(editingVariant.id, {
+																	barcode: e.target.value,
+																})
+															}
+														/>
+														<p className="text-muted-foreground text-xs">
+															O código de barras é composto por 13 números e
+															serve para identificar um produto.
+														</p>
+													</div>
+												</CardContent>
+											</Card>
+
+											{/* Peso e dimensões Section */}
+											<Card>
+												<CardHeader className="pb-4">
+													<CardTitle className="text-lg">
+														Peso e dimensões
+													</CardTitle>
+													<CardDescription>
+														Preencha os dados para calcular o custo de envio dos
+														produtos e mostrar os meios de envio na sua loja.
+													</CardDescription>
+												</CardHeader>
+												<CardContent className="space-y-4">
+													<div className="grid grid-cols-2 gap-4">
+														<div className="space-y-2">
+															<Label className="text-sm">Peso</Label>
+															<div className="relative">
+																<Input
+																	type="number"
+																	step="0.001"
+																	placeholder="0.000"
+																	value={editingVariant.weightKg}
+																	onChange={(e) =>
+																		updateProductVariant(editingVariant.id, {
+																			weightKg: e.target.value,
+																		})
+																	}
+																	className="pr-10"
+																/>
+																<span className="text-muted-foreground absolute right-3 top-1/2 -translate-y-1/2 text-sm">
+																	kg
+																</span>
+															</div>
+														</div>
+														<div className="space-y-2">
+															<Label className="text-sm">Comprimento</Label>
+															<div className="relative">
+																<Input
+																	type="number"
+																	step="0.01"
+																	placeholder="0.00"
+																	value={editingVariant.lengthCm}
+																	onChange={(e) =>
+																		updateProductVariant(editingVariant.id, {
+																			lengthCm: e.target.value,
+																		})
+																	}
+																	className="pr-10"
+																/>
+																<span className="text-muted-foreground absolute right-3 top-1/2 -translate-y-1/2 text-sm">
+																	cm
+																</span>
+															</div>
+														</div>
+													</div>
+
+													<div className="grid grid-cols-2 gap-4">
+														<div className="space-y-2">
+															<Label className="text-sm">Largura</Label>
+															<div className="relative">
+																<Input
+																	type="number"
+																	step="0.01"
+																	placeholder="0.00"
+																	value={editingVariant.widthCm}
+																	onChange={(e) =>
+																		updateProductVariant(editingVariant.id, {
+																			widthCm: e.target.value,
+																		})
+																	}
+																	className="pr-10"
+																/>
+																<span className="text-muted-foreground absolute right-3 top-1/2 -translate-y-1/2 text-sm">
+																	cm
+																</span>
+															</div>
+														</div>
+														<div className="space-y-2">
+															<Label className="text-sm">Altura</Label>
+															<div className="relative">
+																<Input
+																	type="number"
+																	step="0.01"
+																	placeholder="0.00"
+																	value={editingVariant.heightCm}
+																	onChange={(e) =>
+																		updateProductVariant(editingVariant.id, {
+																			heightCm: e.target.value,
+																		})
+																	}
+																	className="pr-10"
+																/>
+																<span className="text-muted-foreground absolute right-3 top-1/2 -translate-y-1/2 text-sm">
+																	cm
+																</span>
+															</div>
+														</div>
+													</div>
+												</CardContent>
+											</Card>
+										</div>
+
+										<DrawerFooter className="border-t">
+											<DrawerClose asChild>
+												<Button disabled={isPending}>
+													{isPending ? "Salvando..." : "Salvar"}
+												</Button>
+											</DrawerClose>
+										</DrawerFooter>
+									</>
+								);
+							})()}
+						</DrawerContent>
+					</Drawer>
+
+					{/* Inventory & Dimensions */}
+					<Card>
+						<CardHeader>
+							<CardTitle className="flex items-center gap-2">
+								<span className="flex size-6 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">
+									5
+								</span>
+								Inventory & Dimensions
+							</CardTitle>
+							<CardDescription>
+								Manage stock levels and product measurements
+							</CardDescription>
+						</CardHeader>
+						<CardContent className="space-y-6">
+							{/* Stock & Status */}
+							<div className="grid grid-cols-2 gap-4">
 								<div className="space-y-2">
-									<Label htmlFor="weight" className="text-xs">
-										Peso (gramas)
-									</Label>
-									<div className="relative">
-										<Input
-											id="weight"
-											type="number"
-											step="1"
-											placeholder="0"
-											value={weight}
-											onChange={(e) => setWeight(e.target.value)}
-											className="pr-10"
-										/>
-										<span className="text-muted-foreground absolute right-3 top-1/2 -translate-y-1/2 text-xs">
-											g
+									<Label htmlFor="stock">Quantidade em Estoque</Label>
+									<Input
+										id="stock"
+										type="number"
+										placeholder="0"
+										{...form.register("stock")}
+									/>
+								</div>
+
+								<div className="space-y-2">
+									<Label htmlFor="status">Status do Produto</Label>
+									<Select
+										value={status || "draft"}
+										onValueChange={(value) =>
+											form.setValue(
+												"status",
+												value as "draft" | "active" | "archived",
+											)
+										}
+									>
+										<SelectTrigger id="status" className="w-full">
+											<SelectValue placeholder="Selecione o status" />
+										</SelectTrigger>
+										<SelectContent>
+											<SelectItem value="draft">
+												<div className="flex items-center gap-2">
+													<span className="size-2 rounded-full bg-yellow-500" />
+													Rascunho
+												</div>
+											</SelectItem>
+											<SelectItem value="active">
+												<div className="flex items-center gap-2">
+													<span className="size-2 rounded-full bg-emerald-500" />
+													Ativo
+												</div>
+											</SelectItem>
+											<SelectItem value="archived">
+												<div className="flex items-center gap-2">
+													<span className="size-2 rounded-full bg-gray-500" />
+													Arquivado
+												</div>
+											</SelectItem>
+										</SelectContent>
+									</Select>
+								</div>
+							</div>
+
+							<Separator />
+
+							{/* Dimensions & Weight Section */}
+							<div className="space-y-4">
+								<div className="flex items-center gap-2">
+									<div className="flex size-5 items-center justify-center rounded bg-purple-100 dark:bg-purple-900/30">
+										<span className="text-purple-600 dark:text-purple-400 text-xs font-semibold">
+											⚖
 										</span>
 									</div>
+									<Label className="text-sm font-semibold">
+										Dimensões e Peso
+									</Label>
+								</div>
+
+								<div className="space-y-4">
+									<div className="space-y-2">
+										<Label htmlFor="weight" className="text-xs">
+											Peso (gramas)
+										</Label>
+										<div className="relative">
+											<Input
+												id="weight"
+												type="number"
+												step="1"
+												placeholder="0"
+												{...form.register("weight")}
+												className="pr-10"
+											/>
+											<span className="text-muted-foreground absolute right-3 top-1/2 -translate-y-1/2 text-xs">
+												g
+											</span>
+										</div>
+										<p className="text-muted-foreground text-xs">
+											Usado para cálculos de frete
+										</p>
+									</div>
+
+									<div className="grid grid-cols-3 gap-3">
+										<div className="space-y-2">
+											<Label htmlFor="height" className="text-xs">
+												Altura (cm)
+											</Label>
+											<div className="relative">
+												<Input
+													id="height"
+													type="number"
+													step="0.1"
+													placeholder="0"
+													{...form.register("height")}
+													className="pr-8"
+												/>
+												<span className="text-muted-foreground absolute right-2 top-1/2 -translate-y-1/2 text-xs">
+													cm
+												</span>
+											</div>
+										</div>
+
+										<div className="space-y-2">
+											<Label htmlFor="width" className="text-xs">
+												Largura (cm)
+											</Label>
+											<div className="relative">
+												<Input
+													id="width"
+													type="number"
+													step="0.1"
+													placeholder="0"
+													{...form.register("width")}
+													className="pr-8"
+												/>
+												<span className="text-muted-foreground absolute right-2 top-1/2 -translate-y-1/2 text-xs">
+													cm
+												</span>
+											</div>
+										</div>
+
+										<div className="space-y-2">
+											<Label htmlFor="length" className="text-xs">
+												Comprimento (cm)
+											</Label>
+											<div className="relative">
+												<Input
+													id="length"
+													type="number"
+													step="0.1"
+													placeholder="0"
+													{...form.register("length")}
+													className="pr-8"
+												/>
+												<span className="text-muted-foreground absolute right-2 top-1/2 -translate-y-1/2 text-xs">
+													cm
+												</span>
+											</div>
+										</div>
+									</div>
 									<p className="text-muted-foreground text-xs">
-										Usado para cálculos de frete
+										Dimensões do produto para embalagem e envio
 									</p>
 								</div>
-
-								<div className="grid grid-cols-3 gap-3">
-									<div className="space-y-2">
-										<Label htmlFor="height" className="text-xs">
-											Altura (cm)
-										</Label>
-										<div className="relative">
-											<Input
-												id="height"
-												type="number"
-												step="0.1"
-												placeholder="0"
-												value={height}
-												onChange={(e) => setHeight(e.target.value)}
-												className="pr-8"
-											/>
-											<span className="text-muted-foreground absolute right-2 top-1/2 -translate-y-1/2 text-xs">
-												cm
-											</span>
-										</div>
-									</div>
-
-									<div className="space-y-2">
-										<Label htmlFor="width" className="text-xs">
-											Largura (cm)
-										</Label>
-										<div className="relative">
-											<Input
-												id="width"
-												type="number"
-												step="0.1"
-												placeholder="0"
-												value={width}
-												onChange={(e) => setWidth(e.target.value)}
-												className="pr-8"
-											/>
-											<span className="text-muted-foreground absolute right-2 top-1/2 -translate-y-1/2 text-xs">
-												cm
-											</span>
-										</div>
-									</div>
-
-									<div className="space-y-2">
-										<Label htmlFor="length" className="text-xs">
-											Comprimento (cm)
-										</Label>
-										<div className="relative">
-											<Input
-												id="length"
-												type="number"
-												step="0.1"
-												placeholder="0"
-												value={length}
-												onChange={(e) => setLength(e.target.value)}
-												className="pr-8"
-											/>
-											<span className="text-muted-foreground absolute right-2 top-1/2 -translate-y-1/2 text-xs">
-												cm
-											</span>
-										</div>
-									</div>
-								</div>
-								<p className="text-muted-foreground text-xs">
-									Dimensões do produto para embalagem e envio
-								</p>
 							</div>
-						</div>
-					</CardContent>
-				</Card>
+						</CardContent>
+					</Card>
 
-				{/* Submit Actions */}
-				<div className="sticky bottom-0 -mx-4 flex items-center justify-end gap-3 border-t bg-background/95 px-4 py-4 backdrop-blur supports-backdrop-filter:bg-background/60">
-					<Button type="button" variant="outline" asChild>
-						<Link to="/$store/products" params={{ store }}>
-							Cancelar
-						</Link>
-					</Button>
-					<Button
-						type="submit"
-						className="min-w-[140px]"
-						disabled={isPending || isLoadingProduct}
-					>
-						{isPending
-							? "Salvando..."
-							: isEditMode
-								? "Atualizar Produto"
-								: "Salvar Produto"}
-					</Button>
-				</div>
-			</form>
+					{/* Submit Actions */}
+					<div className="sticky bottom-0 -mx-4 flex items-center justify-end gap-3 border-t bg-background/95 px-4 py-4 backdrop-blur supports-backdrop-filter:bg-background/60">
+						<Button type="button" variant="outline" asChild>
+							<Link to="/$store/products" params={{ store }}>
+								Cancelar
+							</Link>
+						</Button>
+						<Button
+							type="submit"
+							className="min-w-[140px]"
+							disabled={isPending || isLoadingProduct}
+						>
+							{isPending
+								? "Salvando..."
+								: isEditMode
+									? "Atualizar Produto"
+									: "Salvar Produto"}
+						</Button>
+					</div>
+				</form>
+			</FormProvider>
 		</div>
 	);
 }

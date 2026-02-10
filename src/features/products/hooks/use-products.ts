@@ -12,7 +12,7 @@ export const useProducts = () => {
 		data: productsData = [],
 		isLoading,
 		error,
-	} = useQuery({
+	} = useQuery<Product[], Error>({
 		queryKey: ["products", store],
 		queryFn: async () => {
 			const products = await getProductsAdapter();
@@ -21,7 +21,6 @@ export const useProducts = () => {
 	});
 
 	const products = productsData.map((product: Product, index: number) => {
-		// Preservar o ID original (UUID) do produto
 		const id = product.id || `temp-${index}`;
 
 		const image = product.image || product.images?.[0] || undefined;
@@ -44,6 +43,10 @@ export const useProducts = () => {
 	return {
 		products: products,
 		isLoading,
-		error,
+		error: error
+			? error instanceof Error
+				? error
+				: new Error("Failed to load products")
+			: null,
 	};
 };
