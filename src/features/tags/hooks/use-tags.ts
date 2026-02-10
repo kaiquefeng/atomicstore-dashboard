@@ -104,7 +104,10 @@ export function useTags(mutations?: UseTagsMutations) {
 			// se a API suportar ordenação, podemos adicionar um adapter/mutation depois.
 			// Aqui apenas retornamos uma versão reordenada para a UI se necessário.
 			// Como os dados vêm da API, mantemos a fonte da verdade lá.
-			console.warn("Reordenação de tags ainda não é persistida na API.");
+			console.warn("Reordenação de tags ainda não é persistida na API.", {
+				draggedId,
+				targetIndex,
+			});
 		},
 		[],
 	);
