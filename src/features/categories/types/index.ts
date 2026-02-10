@@ -1,6 +1,7 @@
 import type { ListItem, NewItemRow } from "@/components/shared/types";
 
 export interface Category extends ListItem {
+	isActive: boolean;
 	slug: string;
 	parentId: string | null;
 	children: Category[];

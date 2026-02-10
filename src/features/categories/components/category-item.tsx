@@ -92,7 +92,7 @@ export function CategoryItem({
 						: isEditing
 							? "bg-muted/30"
 							: "bg-background hover:bg-muted/50"
-				} ${category.hidden ? "opacity-50" : ""}`}
+				} ${!category.isActive ? "opacity-50" : ""}`}
 				style={{ paddingLeft: `${depth * 32 + 16}px` }}
 			>
 				{/* Drag Handle */}
@@ -140,8 +140,7 @@ export function CategoryItem({
 					<span className="flex-1 font-medium">{category.name}</span>
 				)}
 
-				{/* Hidden Indicator */}
-				{category.hidden && !isEditing && (
+				{!category.isActive && !isEditing && (
 					<span className="text-muted-foreground text-xs">(oculto)</span>
 				)}
 

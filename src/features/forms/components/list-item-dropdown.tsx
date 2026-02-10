@@ -1,6 +1,7 @@
 import {
 	IconDots,
 	IconEdit,
+	IconEye,
 	IconEyeOff,
 	IconPlus,
 	IconTrash,
@@ -51,8 +52,13 @@ export function ListItemDropdown<T extends ListItem>({
 					Editar
 				</DropdownMenuItem>
 				<DropdownMenuItem onClick={() => onToggleHidden(item.id)}>
-					<IconEyeOff className="size-4 mr-2" />
-					{item.hidden ? "Mostrar na loja" : "Ocultar na loja"}
+					{item.hidden ? (
+						<IconEye className="size-4 mr-2" />
+					) : (
+						<IconEyeOff className="size-4 mr-2" />
+					)}
+
+					{item.hidden ? "Exibir na loja" : "Ocultar na loja"}
 				</DropdownMenuItem>
 				<DropdownMenuSeparator />
 				<DropdownMenuItem

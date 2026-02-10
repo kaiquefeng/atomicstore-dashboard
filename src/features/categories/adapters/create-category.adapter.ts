@@ -21,22 +21,18 @@ export interface CreateCategoryResponse {
 export const createCategoryAdapter = async (
 	payload: CreateCategoryPayload,
 ): Promise<CreateCategoryResponse> => {
-	// Construir payload apenas com campos necessários
-	// Não incluir parentId se for null (categoria raiz)
 	const requestPayload: Record<string, unknown> = {
 		name: payload.name,
 		slug: payload.slug,
 		storeId: payload.storeId,
 	};
 
-	// Incluir parentId apenas se não for null
 	if (payload.parentId !== null && payload.parentId !== undefined) {
 		requestPayload.parentId = payload.parentId;
 	}
 
-	// Incluir hidden se fornecido
 	if (payload.hidden !== undefined) {
-		requestPayload.hidden = payload.hidden;
+		requestPayload.isActive = !payload.hidden;
 	}
 
 	const response = await apiClient.post<CreateCategoryResponse>(

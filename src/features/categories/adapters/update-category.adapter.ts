@@ -15,20 +15,17 @@ export const updateCategoryAdapter = async (
 ): Promise<CreateCategoryResponse> => {
 	const { id, ...categoryData } = payload;
 
-	// Construir payload apenas com campos necessários
 	const requestPayload: Record<string, unknown> = {
 		name: categoryData.name,
 		slug: categoryData.slug,
 	};
 
-	// Incluir parentId apenas se não for null
 	if (categoryData.parentId !== null && categoryData.parentId !== undefined) {
 		requestPayload.parentId = categoryData.parentId;
 	}
 
-	// Incluir hidden se fornecido
 	if (categoryData.hidden !== undefined) {
-		requestPayload.hidden = categoryData.hidden;
+		requestPayload.isActive = !categoryData.hidden;
 	}
 
 	const params = buildStoreParams(storeId);

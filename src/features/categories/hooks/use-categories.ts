@@ -101,7 +101,7 @@ export function useCategories(mutations?: UseCategoriesMutations) {
 						id,
 						name,
 						parentId: category.parentId,
-						hidden: category.hidden,
+						hidden: !category.isActive,
 					});
 				}
 			}
@@ -114,12 +114,11 @@ export function useCategories(mutations?: UseCategoriesMutations) {
 			if (mutations?.updateCategory) {
 				const category = findCategoryById(categories, id);
 				if (category) {
-					// Atualizar hidden via API
 					mutations.updateCategory.mutate({
 						id,
 						name: category.name,
 						parentId: category.parentId,
-						hidden: !category.hidden,
+						hidden: category.isActive,
 					});
 				}
 			}
@@ -147,7 +146,7 @@ export function useCategories(mutations?: UseCategoriesMutations) {
 						id: draggedId,
 						name: draggedCategory.name,
 						parentId: targetId,
-						hidden: draggedCategory.hidden,
+						hidden: !draggedCategory.isActive,
 					});
 					setExpandedIds((prev) => new Set([...prev, targetId]));
 				}

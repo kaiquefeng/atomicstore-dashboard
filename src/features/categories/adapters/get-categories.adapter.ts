@@ -5,7 +5,7 @@ export interface CategoryApiResponse {
 	id: string;
 	name: string;
 	slug: string;
-	hidden?: boolean;
+	isActive?: boolean;
 	parentId?: string | null;
 	storeId?: string;
 	[key: string]: unknown;
@@ -15,35 +15,32 @@ export interface CategoryApiResponse {
  * Transforma uma lista plana de categorias em uma estrutura hierárquica
  */
 function buildCategoryTree(categories: CategoryApiResponse[]): Category[] {
-	// Criar um mapa de categorias por ID
 	const categoryMap = new Map<string, Category>();
 	const rootCategories: Category[] = [];
 
-	// Primeiro, criar todas as categorias sem children
 	for (const cat of categories) {
+		const isActive = cat.isActive ?? true;
 		categoryMap.set(cat.id, {
 			id: cat.id,
 			name: cat.name,
 			slug: cat.slug,
-			hidden: cat.hidden ?? false,
+			isActive,
+			hidden: !isActive,
 			parentId: cat.parentId ?? null,
 			children: [],
 		});
 	}
 
-	// Depois, organizar em hierarquia
 	for (const cat of categories) {
 		const category = categoryMap.get(cat.id);
 		if (!category) continue;
 
 		if (cat.parentId && categoryMap.has(cat.parentId)) {
-			// É uma subcategoria
 			const parent = categoryMap.get(cat.parentId);
 			if (parent) {
 				parent.children.push(category);
 			}
 		} else {
-			// É uma categoria raiz
 			rootCategories.push(category);
 		}
 	}
@@ -72,6 +69,5 @@ export const getCategoriesAdapter = async (
 		? data
 		: data.categories || data.data || data.items || [];
 
-	// Transformar estrutura plana em árvore hierárquica
 	return buildCategoryTree(categoriesList);
 };
