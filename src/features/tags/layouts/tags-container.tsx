@@ -6,12 +6,27 @@ import { DeleteDialog } from "@/components/shared/delete-dialog";
 import { HeaderSection } from "@/components/shared/header-section";
 import { ListHelpLink } from "@/components/shared/list-help-link";
 import { TagList } from "../components";
-import { useTagDragDrop, useTagEditing, useTags } from "../hooks";
+import {
+	useCreateTag,
+	useDeleteTag,
+	useTagDragDrop,
+	useTagEditing,
+	useTags,
+	useUpdateTag,
+} from "../hooks";
 import type { Tag } from "../types";
 
 export function TagsContainer() {
+	const createTagMutation = useCreateTag();
+	const updateTagMutation = useUpdateTag();
+	const deleteTagMutation = useDeleteTag();
+
 	const { tags, addTag, updateTag, toggleHidden, deleteTag, reorderTags } =
-		useTags();
+		useTags({
+			createTag: createTagMutation,
+			updateTag: updateTagMutation,
+			deleteTag: deleteTagMutation,
+		});
 
 	const {
 		newTagRows,

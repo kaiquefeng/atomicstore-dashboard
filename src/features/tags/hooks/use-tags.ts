@@ -1,79 +1,110 @@
+import type { UseMutationResult } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import * as React from "react";
-import { generateSlug } from "@/helpers/generate";
-import type { NewTagRow, Tag } from "../types";
+import { useStoreSlug } from "@/hooks/use-store-slug";
+import { useStores } from "@/hooks/use-stores";
+import type { CreateTagResponse } from "../adapters/create-tag.adapter";
+import type { DeleteTagResponse } from "../adapters/delete-tag.adapter";
+import { getTagsAdapter } from "../adapters/get-tags.adapter";
+import type { NewTagRow } from "../types";
 
-const INITIAL_TAGS: Tag[] = [
-	{
-		id: "1",
-		name: "Promoção",
-		slug: "promocao",
-		hidden: false,
-	},
-	{
-		id: "2",
-		name: "Novo",
-		slug: "novo",
-		hidden: false,
-	},
-	{
-		id: "3",
-		name: "Destaque",
-		slug: "destaque",
-		hidden: false,
-	},
-	{
-		id: "4",
-		name: "Esgotando",
-		slug: "esgotando",
-		hidden: false,
-	},
-];
+interface UseTagsMutations {
+	createTag?: UseMutationResult<
+		CreateTagResponse,
+		Error,
+		{ name: string; hidden?: boolean }
+	>;
+	updateTag?: UseMutationResult<
+		CreateTagResponse,
+		Error,
+		{ id: string; name: string; hidden?: boolean }
+	>;
+	deleteTag?: UseMutationResult<DeleteTagResponse, Error, string>;
+}
 
-export function useTags() {
-	const [tags, setTags] = React.useState<Tag[]>(INITIAL_TAGS);
+export function useTags(mutations?: UseTagsMutations) {
+	const storeSlug = useStoreSlug();
+	const { stores } = useStores();
 
-	const addTag = React.useCallback((name: string) => {
-		const newTag: Tag = {
-			id: `${Date.now()}`,
-			name,
-			slug: generateSlug(name),
-			hidden: false,
-		};
+	const currentStore = React.useMemo(() => {
+		if (!storeSlug) return null;
+		return stores.find((store) => store.slug === storeSlug) || null;
+	}, [storeSlug, stores]);
 
-		setTags((prev) => [...prev, newTag]);
-	}, []);
+	const {
+		data: tags = [],
+		isLoading,
+		error,
+	} = useQuery({
+		queryKey: ["tags", storeSlug, currentStore?.id],
+		queryFn: async () => {
+			const storeId = currentStore?.id;
+			const tags = await getTagsAdapter(storeId);
+			return tags;
+		},
+		enabled: !!currentStore,
+	});
 
-	const updateTag = React.useCallback((id: string, name: string) => {
-		setTags((prev) =>
-			prev.map((tag) =>
-				tag.id === id ? { ...tag, name, slug: generateSlug(name) } : tag,
-			),
-		);
-	}, []);
+	const addTag = React.useCallback(
+		(name: string) => {
+			if (mutations?.createTag) {
+				mutations.createTag.mutate({
+					name,
+					hidden: false,
+				});
+			}
+		},
+		[mutations],
+	);
 
-	const toggleHidden = React.useCallback((id: string) => {
-		setTags((prev) =>
-			prev.map((tag) =>
-				tag.id === id ? { ...tag, hidden: !tag.hidden } : tag,
-			),
-		);
-	}, []);
+	const updateTag = React.useCallback(
+		(id: string, name: string) => {
+			if (mutations?.updateTag) {
+				const tag = tags.find((t) => t.id === id);
+				if (tag) {
+					mutations.updateTag.mutate({
+						id,
+						name,
+						hidden: tag.hidden,
+					});
+				}
+			}
+		},
+		[mutations, tags],
+	);
 
-	const deleteTag = React.useCallback((id: string) => {
-		setTags((prev) => prev.filter((tag) => tag.id !== id));
-	}, []);
+	const toggleHidden = React.useCallback(
+		(id: string) => {
+			if (mutations?.updateTag) {
+				const tag = tags.find((t) => t.id === id);
+				if (tag) {
+					mutations.updateTag.mutate({
+						id,
+						name: tag.name,
+						hidden: !tag.hidden,
+					});
+				}
+			}
+		},
+		[mutations, tags],
+	);
+
+	const deleteTag = React.useCallback(
+		(id: string) => {
+			if (mutations?.deleteTag) {
+				mutations.deleteTag.mutate(id);
+			}
+		},
+		[mutations],
+	);
 
 	const reorderTags = React.useCallback(
 		(draggedId: string, targetIndex: number) => {
-			setTags((prev) => {
-				const draggedIndex = prev.findIndex((t) => t.id === draggedId);
-				if (draggedIndex === -1) return prev;
-
-				const newTags = [...prev];
-				const [draggedTag] = newTags.splice(draggedIndex, 1);
-				newTags.splice(targetIndex, 0, draggedTag);
-				return newTags;
-			});
+			// A ordenação é apenas local por enquanto;
+			// se a API suportar ordenação, podemos adicionar um adapter/mutation depois.
+			// Aqui apenas retornamos uma versão reordenada para a UI se necessário.
+			// Como os dados vêm da API, mantemos a fonte da verdade lá.
+			console.warn("Reordenação de tags ainda não é persistida na API.");
 		},
 		[],
 	);
@@ -85,6 +116,8 @@ export function useTags() {
 		toggleHidden,
 		deleteTag,
 		reorderTags,
+		isLoading,
+		error,
 	};
 }
 
