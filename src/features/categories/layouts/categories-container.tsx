@@ -10,10 +10,17 @@ import {
 	useCategories,
 	useCategoryDragDrop,
 	useCategoryEditing,
+	useCreateCategory,
+	useDeleteCategory,
+	useUpdateCategory,
 } from "../hooks";
 import type { Category } from "../types";
 
 export function CategoriesContainer() {
+	const createCategoryMutation = useCreateCategory();
+	const updateCategoryMutation = useUpdateCategory();
+	const deleteCategoryMutation = useDeleteCategory();
+
 	const {
 		categories,
 		expandedIds,
@@ -23,7 +30,13 @@ export function CategoriesContainer() {
 		toggleHidden,
 		deleteCategory,
 		moveCategory,
-	} = useCategories();
+		isLoading,
+		error,
+	} = useCategories({
+		createCategory: createCategoryMutation,
+		updateCategory: updateCategoryMutation,
+		deleteCategory: deleteCategoryMutation,
+	});
 
 	const [localExpandedIds, setLocalExpandedIds] = React.useState(expandedIds);
 

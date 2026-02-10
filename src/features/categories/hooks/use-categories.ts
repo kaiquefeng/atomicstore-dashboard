@@ -1,67 +1,53 @@
+"use client";
+
+import type { UseMutationResult } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import * as React from "react";
-import { generateSlug } from "@/helpers/generate";
+import { useStoreSlug } from "@/hooks/use-store-slug";
+import { useStores } from "@/hooks/use-stores";
+import type { CreateCategoryResponse } from "../adapters/create-category.adapter";
+import type { DeleteCategoryResponse } from "../adapters/delete-category.adapter";
+import { getCategoriesAdapter } from "../adapters/get-categories.adapter";
 import type { Category, NewCategoryRow } from "../types";
 
-const INITIAL_CATEGORIES: Category[] = [
-	{
-		id: "1",
-		name: "Roupas",
-		slug: "roupas",
-		hidden: false,
-		parentId: null,
-		children: [
-			{
-				id: "1-1",
-				name: "Camisetas",
-				slug: "camisetas",
-				hidden: false,
-				parentId: "1",
-				children: [],
-			},
-			{
-				id: "1-2",
-				name: "Calças",
-				slug: "calcas",
-				hidden: false,
-				parentId: "1",
-				children: [
-					{
-						id: "1-2-1",
-						name: "Jeans",
-						slug: "jeans",
-						hidden: false,
-						parentId: "1-2",
-						children: [],
-					},
-				],
-			},
-		],
-	},
-	{
-		id: "2",
-		name: "Acessórios",
-		slug: "acessorios",
-		hidden: false,
-		parentId: null,
-		children: [
-			{
-				id: "2-1",
-				name: "Bolsas",
-				slug: "bolsas",
-				hidden: false,
-				parentId: "2",
-				children: [],
-			},
-		],
-	},
-];
+interface UseCategoriesMutations {
+	createCategory?: UseMutationResult<
+		CreateCategoryResponse,
+		Error,
+		{ name: string; parentId: string | null; hidden?: boolean }
+	>;
+	updateCategory?: UseMutationResult<
+		CreateCategoryResponse,
+		Error,
+		{ id: string; name: string; parentId?: string | null; hidden?: boolean }
+	>;
+	deleteCategory?: UseMutationResult<DeleteCategoryResponse, Error, string>;
+}
 
-export function useCategories() {
-	const [categories, setCategories] =
-		React.useState<Category[]>(INITIAL_CATEGORIES);
-	const [expandedIds, setExpandedIds] = React.useState<Set<string>>(
-		new Set(["1", "1-2"]),
-	);
+export function useCategories(mutations?: UseCategoriesMutations) {
+	const storeSlug = useStoreSlug();
+	const { stores } = useStores();
+	const [expandedIds, setExpandedIds] = React.useState<Set<string>>(new Set());
+
+	// Obter storeId a partir do slug
+	const currentStore = React.useMemo(() => {
+		if (!storeSlug) return null;
+		return stores.find((store) => store.slug === storeSlug) || null;
+	}, [storeSlug, stores]);
+
+	const {
+		data: categories = [],
+		isLoading,
+		error,
+	} = useQuery({
+		queryKey: ["categories", storeSlug, currentStore?.id],
+		queryFn: async () => {
+			const storeId = currentStore?.id;
+			const categories = await getCategoriesAdapter(storeId);
+			return categories;
+		},
+		enabled: !!currentStore,
+	});
 
 	const toggleExpanded = React.useCallback((id: string) => {
 		setExpandedIds((prev) => {
@@ -87,120 +73,87 @@ export function useCategories() {
 		[],
 	);
 
-	const addCategoryToParent = React.useCallback(
-		(cats: Category[], parentId: string, newCategory: Category): Category[] => {
-			return cats.map((cat) => {
-				if (cat.id === parentId) {
-					return { ...cat, children: [...cat.children, newCategory] };
-				}
-				return {
-					...cat,
-					children: addCategoryToParent(cat.children, parentId, newCategory),
-				};
-			});
-		},
-		[],
-	);
-
 	const addCategory = React.useCallback(
 		(parentId: string | null, name: string) => {
-			const newCategory: Category = {
-				id: `${Date.now()}`,
-				name,
-				slug: generateSlug(name),
-				hidden: false,
-				parentId,
-				children: [],
-			};
-
-			if (parentId === null) {
-				setCategories((prev) => [...prev, newCategory]);
-			} else {
-				setCategories((prev) =>
-					addCategoryToParent(prev, parentId, newCategory),
-				);
-				setExpandedIds((prev) => new Set([...prev, parentId]));
+			if (mutations?.createCategory) {
+				// Usar mutation da API
+				mutations.createCategory.mutate({
+					name,
+					parentId,
+					hidden: false,
+				});
+				// Expandir parent se for subcategoria
+				if (parentId) {
+					setExpandedIds((prev) => new Set([...prev, parentId]));
+				}
 			}
 		},
-		[addCategoryToParent],
-	);
-
-	const updateCategoryInTree = React.useCallback(
-		(cats: Category[], id: string, name: string): Category[] => {
-			return cats.map((cat) => {
-				if (cat.id === id) {
-					return { ...cat, name, slug: generateSlug(name) };
-				}
-				return {
-					...cat,
-					children: updateCategoryInTree(cat.children, id, name),
-				};
-			});
-		},
-		[],
+		[mutations],
 	);
 
 	const updateCategory = React.useCallback(
 		(id: string, name: string) => {
-			setCategories((prev) => updateCategoryInTree(prev, id, name));
-		},
-		[updateCategoryInTree],
-	);
-
-	const toggleHiddenInTree = React.useCallback(
-		(cats: Category[], id: string): Category[] => {
-			return cats.map((cat) => {
-				if (cat.id === id) {
-					return { ...cat, hidden: !cat.hidden };
+			if (mutations?.updateCategory) {
+				const category = findCategoryById(categories, id);
+				if (category) {
+					// Usar mutation da API
+					mutations.updateCategory.mutate({
+						id,
+						name,
+						parentId: category.parentId,
+						hidden: category.hidden,
+					});
 				}
-				return { ...cat, children: toggleHiddenInTree(cat.children, id) };
-			});
+			}
 		},
-		[],
+		[mutations, categories, findCategoryById],
 	);
 
 	const toggleHidden = React.useCallback(
 		(id: string) => {
-			setCategories((prev) => toggleHiddenInTree(prev, id));
+			if (mutations?.updateCategory) {
+				const category = findCategoryById(categories, id);
+				if (category) {
+					// Atualizar hidden via API
+					mutations.updateCategory.mutate({
+						id,
+						name: category.name,
+						parentId: category.parentId,
+						hidden: !category.hidden,
+					});
+				}
+			}
 		},
-		[toggleHiddenInTree],
-	);
-
-	const deleteCategoryFromTree = React.useCallback(
-		(cats: Category[], id: string): Category[] => {
-			return cats
-				.filter((cat) => cat.id !== id)
-				.map((cat) => ({
-					...cat,
-					children: deleteCategoryFromTree(cat.children, id),
-				}));
-		},
-		[],
+		[mutations, categories, findCategoryById],
 	);
 
 	const deleteCategory = React.useCallback(
 		(id: string) => {
-			setCategories((prev) => deleteCategoryFromTree(prev, id));
+			if (mutations?.deleteCategory) {
+				// Usar mutation da API
+				mutations.deleteCategory.mutate(id);
+			}
 		},
-		[deleteCategoryFromTree],
+		[mutations],
 	);
 
 	const moveCategory = React.useCallback(
 		(draggedId: string, targetId: string) => {
-			const draggedCategory = findCategoryById(categories, draggedId);
-			if (draggedCategory) {
-				let newCategories = deleteCategoryFromTree(categories, draggedId);
-				const updatedCategory = { ...draggedCategory, parentId: targetId };
-				newCategories = addCategoryToParent(
-					newCategories,
-					targetId,
-					updatedCategory,
-				);
-				setCategories(newCategories);
-				setExpandedIds((prev) => new Set([...prev, targetId]));
+			if (mutations?.updateCategory) {
+				const draggedCategory = findCategoryById(categories, draggedId);
+				if (draggedCategory) {
+					// Atualizar parentId via API
+					mutations.updateCategory.mutate({
+						id: draggedId,
+						name: draggedCategory.name,
+						parentId: targetId,
+						hidden: draggedCategory.hidden,
+					});
+					setExpandedIds((prev) => new Set([...prev, targetId]));
+				}
 			}
 		},
-		[categories, findCategoryById, deleteCategoryFromTree, addCategoryToParent],
+		[mutations, categories, findCategoryById],
 	);
 
 	return {
@@ -213,6 +166,8 @@ export function useCategories() {
 		deleteCategory,
 		moveCategory,
 		findCategoryById,
+		isLoading,
+		error,
 	};
 }
 
