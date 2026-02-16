@@ -7,6 +7,7 @@ import {
 	IconDotsVertical,
 	IconDownload,
 	IconFilter,
+	IconLoader,
 	IconMail,
 	IconMessage,
 } from "@tabler/icons-react";
@@ -56,35 +57,16 @@ import {
 	TooltipContent,
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
-import ordersData from "@/constants/orders-data.json";
+import type { Order, PaymentStatus, FulfilmentStatus } from "@/features/orders/types";
+import { useOrders } from "@/features/orders/hooks";
 
 export const Route = createFileRoute("/$store/_layout/orders")({
 	component: OrdersPage,
 });
 
-interface Order {
-	id: string;
-	orderNumber: string;
-	itemsCount: number;
-	thumbnail: string;
-	customer: string;
-	location: string;
-	paymentStatus: "paid" | "pending" | "unpaid";
-	date: string;
-	fulfilmentStatus: "fulfilled" | "unfulfilled";
-	total: number;
-}
-
-const stockStats = {
-	total: 65,
-	inStock: 30,
-	lowStock: 10,
-	outOfStock: 5,
-};
-
 function formatDate(dateString: string): string {
 	const date = new Date(dateString);
-	return date.toLocaleDateString("en-GB", {
+	return date.toLocaleDateString("pt-BR", {
 		day: "numeric",
 		month: "short",
 		year: "numeric",
@@ -92,28 +74,31 @@ function formatDate(dateString: string): string {
 }
 
 function formatCurrency(value: number): string {
-	return `$${value.toFixed(2)}`;
+	return new Intl.NumberFormat("pt-BR", {
+		style: "currency",
+		currency: "BRL",
+	}).format(value);
 }
 
-function PaymentStatusBadge({ status }: { status: Order["paymentStatus"] }) {
+function PaymentStatusBadge({ status }: { status: PaymentStatus }) {
 	const variants: Record<
-		Order["paymentStatus"],
+		PaymentStatus,
 		{ className: string; label: string }
 	> = {
 		paid: {
 			className:
 				"bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-50 dark:bg-emerald-950 dark:text-emerald-400 dark:border-emerald-800",
-			label: "Paid",
+			label: "Pago",
 		},
 		pending: {
 			className:
 				"bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-50 dark:bg-amber-950 dark:text-amber-400 dark:border-amber-800",
-			label: "Pending",
+			label: "Pendente",
 		},
 		unpaid: {
 			className:
 				"bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-400 dark:border-slate-700",
-			label: "Unpaid",
+			label: "Não pago",
 		},
 	};
 
@@ -129,19 +114,19 @@ function PaymentStatusBadge({ status }: { status: Order["paymentStatus"] }) {
 function FulfilmentStatusBadge({
 	status,
 }: {
-	status: Order["fulfilmentStatus"];
+	status: FulfilmentStatus;
 }) {
 	const variants: Record<
-		Order["fulfilmentStatus"],
+		FulfilmentStatus,
 		{ dotColor: string; label: string }
 	> = {
 		fulfilled: {
 			dotColor: "bg-emerald-500",
-			label: "Fulfilled",
+			label: "Enviado",
 		},
 		unfulfilled: {
 			dotColor: "bg-amber-500",
-			label: "Unfulfilled",
+			label: "Não enviado",
 		},
 	};
 
@@ -163,45 +148,6 @@ function FulfilmentStatusBadge({
 	);
 }
 
-function StockIndicator() {
-	const { inStock, lowStock, outOfStock, total } = stockStats;
-	const inStockPercent = (inStock / total) * 100;
-	const lowStockPercent = (lowStock / total) * 100;
-
-	return (
-		<div className="flex flex-col items-end gap-1">
-			<span className="text-sm font-medium text-foreground">
-				{total} products
-			</span>
-			<div className="flex h-2 w-48 overflow-hidden rounded-full">
-				<div
-					className="bg-emerald-500"
-					style={{ width: `${inStockPercent}%` }}
-				/>
-				<div
-					className="bg-amber-500"
-					style={{ width: `${lowStockPercent}%` }}
-				/>
-				<div className="flex-1 bg-rose-500" />
-			</div>
-			<div className="flex gap-4 text-xs text-muted-foreground">
-				<span className="flex items-center gap-1">
-					<span className="size-2 rounded-full bg-emerald-500" />
-					In stock: {inStock}
-				</span>
-				<span className="flex items-center gap-1">
-					<span className="size-2 rounded-full bg-amber-500" />
-					Low stock: {lowStock}
-				</span>
-				<span className="flex items-center gap-1">
-					<span className="size-2 rounded-full bg-rose-500" />
-					Out of stock: {outOfStock}
-				</span>
-			</div>
-		</div>
-	);
-}
-
 const columns: ColumnDef<Order>[] = [
 	{
 		id: "select",
@@ -212,14 +158,14 @@ const columns: ColumnDef<Order>[] = [
 					(table.getIsSomePageRowsSelected() && "indeterminate")
 				}
 				onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-				aria-label="Select all"
+				aria-label="Selecionar todos"
 			/>
 		),
 		cell: ({ row }) => (
 			<Checkbox
 				checked={row.getIsSelected()}
 				onCheckedChange={(value) => row.toggleSelected(!!value)}
-				aria-label="Select row"
+				aria-label="Selecionar linha"
 			/>
 		),
 		enableSorting: false,
@@ -234,7 +180,7 @@ const columns: ColumnDef<Order>[] = [
 				className="-ml-3 h-8 data-[state=open]:bg-accent"
 				onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
 			>
-				Order ID
+				Pedido
 				<IconChevronDown
 					className={`ml-1 size-4 transition-transform ${
 						column.getIsSorted() === "asc" ? "rotate-180" : ""
@@ -244,17 +190,19 @@ const columns: ColumnDef<Order>[] = [
 		),
 		cell: ({ row }) => (
 			<div className="flex items-center gap-3">
-				<img
-					src={row.original.thumbnail}
-					alt=""
-					className="size-10 rounded-lg object-cover"
-				/>
+				{row.original.thumbnail && (
+					<img
+						src={row.original.thumbnail}
+						alt=""
+						className="size-10 rounded-lg object-cover"
+					/>
+				)}
 				<div className="flex flex-col">
 					<span className="font-medium text-foreground">
 						{row.original.orderNumber}
 					</span>
 					<span className="text-xs text-muted-foreground">
-						{row.original.itemsCount} items
+						{row.original.itemsCount} {row.original.itemsCount === 1 ? "item" : "itens"}
 					</span>
 				</div>
 			</div>
@@ -262,29 +210,37 @@ const columns: ColumnDef<Order>[] = [
 	},
 	{
 		accessorKey: "customer",
-		header: "Customer",
+		header: "Cliente",
 		cell: ({ row }) => (
-			<span className="text-foreground">{row.original.customer}</span>
+			<span className="text-foreground">{row.original.customer.name}</span>
 		),
 	},
 	{
-		accessorKey: "location",
-		header: "Location",
-		cell: ({ row }) => (
-			<div className="flex items-center gap-2">
-				<span className="max-w-[150px] truncate text-muted-foreground">
-					{row.original.location}
-				</span>
-				<Tooltip>
-					<TooltipTrigger asChild>
-						<Button variant="ghost" size="icon" className="size-6">
-							<IconMail className="size-4 text-muted-foreground" />
-						</Button>
-					</TooltipTrigger>
-					<TooltipContent>Send email</TooltipContent>
-				</Tooltip>
-			</div>
-		),
+		accessorKey: "shippingAddress",
+		header: "Localização",
+		cell: ({ row }) => {
+			const address = row.original.shippingAddress;
+			const location = address?.fullAddress || 
+				[address?.city, address?.state].filter(Boolean).join(", ") || 
+				"—";
+			return (
+				<div className="flex items-center gap-2">
+					<span className="max-w-[150px] truncate text-muted-foreground">
+						{location}
+					</span>
+					{row.original.customer.email && (
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<Button variant="ghost" size="icon" className="size-6">
+									<IconMail className="size-4 text-muted-foreground" />
+								</Button>
+							</TooltipTrigger>
+							<TooltipContent>Enviar email</TooltipContent>
+						</Tooltip>
+					)}
+				</div>
+			);
+		},
 	},
 	{
 		accessorKey: "paymentStatus",
@@ -295,7 +251,7 @@ const columns: ColumnDef<Order>[] = [
 				className="-ml-3 h-8 data-[state=open]:bg-accent"
 				onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
 			>
-				Payment Status
+				Pagamento
 				<IconChevronDown
 					className={`ml-1 size-4 transition-transform ${
 						column.getIsSorted() === "asc" ? "rotate-180" : ""
@@ -308,7 +264,7 @@ const columns: ColumnDef<Order>[] = [
 		),
 	},
 	{
-		accessorKey: "date",
+		accessorKey: "createdAt",
 		header: ({ column }) => (
 			<Button
 				variant="ghost"
@@ -316,7 +272,7 @@ const columns: ColumnDef<Order>[] = [
 				className="-ml-3 h-8 data-[state=open]:bg-accent"
 				onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
 			>
-				Date
+				Data
 				<IconChevronDown
 					className={`ml-1 size-4 transition-transform ${
 						column.getIsSorted() === "asc" ? "rotate-180" : ""
@@ -326,7 +282,7 @@ const columns: ColumnDef<Order>[] = [
 		),
 		cell: ({ row }) => (
 			<span className="text-muted-foreground">
-				{formatDate(row.original.date)}
+				{formatDate(row.original.createdAt)}
 			</span>
 		),
 	},
@@ -339,7 +295,7 @@ const columns: ColumnDef<Order>[] = [
 				className="-ml-3 h-8 data-[state=open]:bg-accent"
 				onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
 			>
-				Fulfilment Status
+				Envio
 				<IconChevronDown
 					className={`ml-1 size-4 transition-transform ${
 						column.getIsSorted() === "asc" ? "rotate-180" : ""
@@ -371,21 +327,21 @@ const columns: ColumnDef<Order>[] = [
 						className="size-8 text-muted-foreground data-[state=open]:bg-muted"
 					>
 						<IconDotsVertical className="size-4" />
-						<span className="sr-only">Open menu</span>
+						<span className="sr-only">Abrir menu</span>
 					</Button>
 				</DropdownMenuTrigger>
 				<DropdownMenuContent align="end" className="w-40">
 					<DropdownMenuItem>
 						<IconMessage className="mr-2 size-4" />
-						View details
+						Ver detalhes
 					</DropdownMenuItem>
 					<DropdownMenuItem>
 						<IconMail className="mr-2 size-4" />
-						Contact customer
+						Contatar cliente
 					</DropdownMenuItem>
 					<DropdownMenuSeparator />
 					<DropdownMenuItem className="text-destructive">
-						Cancel order
+						Cancelar pedido
 					</DropdownMenuItem>
 				</DropdownMenuContent>
 			</DropdownMenu>
@@ -396,6 +352,7 @@ const columns: ColumnDef<Order>[] = [
 type TabFilter = "all" | "open" | "unfulfilled" | "unpaid";
 
 function OrdersPage() {
+	const { orders, isLoading, error } = useOrders();
 	const [activeTab, setActiveTab] = React.useState<TabFilter>("all");
 	const [sorting, setSorting] = React.useState<SortingState>([]);
 	const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
@@ -407,30 +364,26 @@ function OrdersPage() {
 		pageSize: 10,
 	});
 
-	const data = React.useMemo(() => ordersData as Order[], []);
-
 	const filteredData = React.useMemo(() => {
 		switch (activeTab) {
 			case "open":
-				return data.filter(
+				return orders.filter(
 					(order) =>
 						order.paymentStatus === "paid" &&
 						order.fulfilmentStatus === "unfulfilled",
 				);
 			case "unfulfilled":
-				return data.filter((order) => order.fulfilmentStatus === "unfulfilled");
+				return orders.filter((order) => order.fulfilmentStatus === "unfulfilled");
 			case "unpaid":
-				return data.filter(
+				return orders.filter(
 					(order) =>
 						order.paymentStatus === "unpaid" ||
 						order.paymentStatus === "pending",
 				);
 			default:
-				return data;
+				return orders;
 		}
-	}, [data, activeTab]);
-
-	const totalOrders = data.length;
+	}, [orders, activeTab]);
 
 	const table = useReactTable({
 		data: filteredData,
@@ -456,9 +409,33 @@ function OrdersPage() {
 	const pageCount = table.getPageCount();
 	const currentPage = table.getState().pagination.pageIndex + 1;
 
+	if (isLoading) {
+		return (
+			<div className="flex items-center justify-center h-64">
+				<IconLoader className="size-6 animate-spin text-muted-foreground" />
+			</div>
+		);
+	}
+
+	if (error) {
+		return (
+			<div className="flex items-center justify-center h-64">
+				<div className="text-center">
+					<p className="text-destructive font-medium">
+						Erro ao carregar pedidos
+					</p>
+					<p className="text-sm text-muted-foreground mt-1">
+						{error instanceof Error
+							? error.message
+							: "Tente novamente mais tarde."}
+					</p>
+				</div>
+			</div>
+		);
+	}
+
 	const renderOrdersTable = () => (
 		<>
-			{/* Table */}
 			<div className="overflow-hidden rounded-lg border bg-card">
 				<Table>
 					<TableHeader className="bg-muted/50">
@@ -501,7 +478,7 @@ function OrdersPage() {
 									colSpan={columns.length}
 									className="h-24 text-center"
 								>
-									No orders found.
+									Nenhum pedido encontrado.
 								</TableCell>
 							</TableRow>
 						)}
@@ -509,11 +486,10 @@ function OrdersPage() {
 				</Table>
 			</div>
 
-			{/* Pagination */}
 			<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 				<div className="flex items-center gap-2">
 					<Label htmlFor="page-size" className="sr-only">
-						Documents per page
+						Pedidos por página
 					</Label>
 					<Select
 						value={`${table.getState().pagination.pageSize}`}
@@ -521,7 +497,7 @@ function OrdersPage() {
 					>
 						<SelectTrigger className="w-fit gap-2" size="sm" id="page-size">
 							<SelectValue />
-							<span className="text-muted-foreground">Documents</span>
+							<span className="text-muted-foreground">Pedidos</span>
 						</SelectTrigger>
 						<SelectContent>
 							{[10, 20, 30, 50].map((size) => (
@@ -542,10 +518,9 @@ function OrdersPage() {
 						className="gap-1"
 					>
 						<IconChevronLeft className="size-4" />
-						Previous
+						Anterior
 					</Button>
 
-					{/* Page numbers */}
 					<div className="flex items-center gap-1">
 						{Array.from(
 							{ length: Math.min(3, pageCount) },
@@ -583,7 +558,7 @@ function OrdersPage() {
 						disabled={!table.getCanNextPage()}
 						className="gap-1"
 					>
-						Next
+						Próximo
 						<IconChevronRight className="size-4" />
 					</Button>
 				</div>
@@ -593,18 +568,15 @@ function OrdersPage() {
 
 	return (
 		<div className="flex flex-col gap-6 px-4 py-6 lg:px-6">
-			{/* Header */}
 			<div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
 				<div>
 					<h1 className="text-2xl font-semibold text-foreground">
-						Orders{" "}
-						<span className="text-muted-foreground">({totalOrders})</span>
+						Pedidos{" "}
+						<span className="text-muted-foreground">({orders.length})</span>
 					</h1>
 				</div>
-				<StockIndicator />
 			</div>
 
-			{/* Tabs with Content */}
 			<Tabs
 				value={activeTab}
 				onValueChange={(v) => setActiveTab(v as TabFilter)}
@@ -612,20 +584,20 @@ function OrdersPage() {
 			>
 				<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 					<TabsList variant="line">
-						<TabsTrigger value="all">All Order</TabsTrigger>
-						<TabsTrigger value="open">Open</TabsTrigger>
-						<TabsTrigger value="unfulfilled">Unfulfilled</TabsTrigger>
-						<TabsTrigger value="unpaid">Unpaid</TabsTrigger>
+						<TabsTrigger value="all">Todos</TabsTrigger>
+						<TabsTrigger value="open">Em aberto</TabsTrigger>
+						<TabsTrigger value="unfulfilled">Não enviados</TabsTrigger>
+						<TabsTrigger value="unpaid">Não pagos</TabsTrigger>
 					</TabsList>
 
 					<div className="flex items-center gap-2">
 						<Button variant="outline" size="sm">
 							<IconFilter className="mr-1.5 size-4" />
-							Filter
+							Filtrar
 						</Button>
 						<Button variant="outline" size="sm">
 							<IconDownload className="mr-1.5 size-4" />
-							Export
+							Exportar
 						</Button>
 					</div>
 				</div>
