@@ -87,7 +87,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 				items: [
 					{
 						title: "Geral",
-						url: "#",
+						url: "/settings/general",
 					},
 					{
 						title: "Time",

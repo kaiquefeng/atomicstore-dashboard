@@ -1,7 +1,7 @@
 "use client";
 
 import { useNavigate, useParams } from "@tanstack/react-router";
-import { ChevronsUpDown, Plus } from "lucide-react";
+import { ChevronsUpDown, Pencil, Plus } from "lucide-react";
 import * as React from "react";
 import { StoreCreateModal } from "@/components/store-create-modal";
 import {
@@ -117,6 +117,22 @@ export function StoreSwitcher({
 								</DropdownMenuItem>
 							))}
 							<DropdownMenuSeparator />
+							<DropdownMenuItem
+								className="gap-2 p-2"
+								onClick={() =>
+									navigate({
+										to: "/$store/settings/general",
+										params: { store: activeStore.slug },
+									})
+								}
+							>
+								<div className="flex size-6 items-center justify-center rounded-md border bg-transparent">
+									<Pencil className="size-3.5" />
+								</div>
+								<div className="text-muted-foreground font-medium">
+									Editar loja
+								</div>
+							</DropdownMenuItem>
 							<DropdownMenuItem
 								className="gap-2 p-2"
 								onClick={() => setIsCreateModalOpen(true)}

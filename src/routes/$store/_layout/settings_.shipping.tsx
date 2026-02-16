@@ -15,7 +15,6 @@ import * as React from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
 	Card,
 	CardContent,
@@ -23,6 +22,7 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -40,12 +40,11 @@ import {
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
 import {
+	useCreateShippingMethod,
 	useShippingMethods,
 	useShippingSettings,
-	useUpdateShippingSettings,
 	useUpdateShippingMethod,
-	useCreateShippingMethod,
-	useDeleteShippingMethod,
+	useUpdateShippingSettings,
 } from "@/features/shipping/hooks";
 import type { ShippingMethod } from "@/features/shipping/types";
 
@@ -88,11 +87,12 @@ interface FreeShippingRule {
 
 function ShippingSettingsPage() {
 	const { shippingMethods, isLoading: isLoadingMethods } = useShippingMethods();
-	const { shippingSettings, isLoading: isLoadingSettings } = useShippingSettings();
+	const { shippingSettings, isLoading: isLoadingSettings } =
+		useShippingSettings();
 	const updateSettingsMutation = useUpdateShippingSettings();
 	const updateMethodMutation = useUpdateShippingMethod();
 	const createMethodMutation = useCreateShippingMethod();
-	const deleteMethodMutation = useDeleteShippingMethod();
+	// const deleteMethodMutation = useDeleteShippingMethod();
 
 	const [carrier, setCarrier] = React.useState("correios");
 	const [apiKey, setApiKey] = React.useState("");
@@ -549,11 +549,7 @@ function ShippingSettingsPage() {
 							</div>
 						))}
 
-						<Button
-							variant="outline"
-							size="sm"
-							onClick={addFreeShippingRule}
-						>
+						<Button variant="outline" size="sm" onClick={addFreeShippingRule}>
 							<IconPlus className="mr-1.5 size-4" />
 							Adicionar regra
 						</Button>
