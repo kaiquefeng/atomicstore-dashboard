@@ -25,29 +25,39 @@ import {
 import {
 	useStoreDetails,
 	useUploadStoreBanners,
+	useUploadStoreFavicon,
 	useUploadStoreLogo,
 } from "../hooks";
 
 export function StoreBrandingSection() {
 	const { storeDetails, isLoading: isLoadingDetails } = useStoreDetails();
 	const uploadLogoMutation = useUploadStoreLogo();
+	const uploadFaviconMutation = useUploadStoreFavicon();
 	const uploadBannersMutation = useUploadStoreBanners();
 
 	const logoInputRef = React.useRef<HTMLInputElement>(null);
+	const faviconInputRef = React.useRef<HTMLInputElement>(null);
 	const bannersInputRef = React.useRef<HTMLInputElement>(null);
 
 	const [logoPreview, setLogoPreview] = React.useState<string | null>(null);
+	const [faviconPreview, setFaviconPreview] = React.useState<string | null>(
+		null,
+	);
 	const [isLogoDragging, setIsLogoDragging] = React.useState(false);
+	const [isFaviconDragging, setIsFaviconDragging] = React.useState(false);
 	const [isBannersDragging, setIsBannersDragging] = React.useState(false);
 
 	const logoUrl = logoPreview ?? storeDetails?.logo ?? null;
+	const faviconUrl =
+		faviconPreview ?? (storeDetails as { favicon?: string })?.favicon ?? null;
 	const banners = storeDetails?.banners ?? [];
 
 	React.useEffect(() => {
 		return () => {
 			if (logoPreview) URL.revokeObjectURL(logoPreview);
+			if (faviconPreview) URL.revokeObjectURL(faviconPreview);
 		};
-	}, [logoPreview]);
+	}, [logoPreview, faviconPreview]);
 
 	function handleLogoFileSelect(file: File) {
 		if (!file.type.startsWith("image/")) return;
@@ -76,6 +86,35 @@ export function StoreBrandingSection() {
 		setIsLogoDragging(false);
 		const file = e.dataTransfer.files?.[0];
 		if (file) handleLogoFileSelect(file);
+	}
+
+	function handleFaviconFileSelect(file: File) {
+		if (!file.type.startsWith("image/")) return;
+		setFaviconPreview(URL.createObjectURL(file));
+		uploadFaviconMutation.mutate(file);
+	}
+
+	function handleFaviconInputChange(e: React.ChangeEvent<HTMLInputElement>) {
+		const file = e.target.files?.[0];
+		if (file) handleFaviconFileSelect(file);
+		e.target.value = "";
+	}
+
+	function handleFaviconDragOver(e: React.DragEvent) {
+		e.preventDefault();
+		setIsFaviconDragging(true);
+	}
+
+	function handleFaviconDragLeave(e: React.DragEvent) {
+		e.preventDefault();
+		setIsFaviconDragging(false);
+	}
+
+	function handleFaviconDrop(e: React.DragEvent) {
+		e.preventDefault();
+		setIsFaviconDragging(false);
+		const file = e.dataTransfer.files?.[0];
+		if (file) handleFaviconFileSelect(file);
 	}
 
 	function handleBannersFileSelect(files: File[]) {
@@ -130,48 +169,91 @@ export function StoreBrandingSection() {
 					Visual da Loja
 				</CardTitle>
 				<CardDescription>
-					Envie o logo e os banners da sua loja. O logo aparece no cabeçalho da
-					loja e os banners podem ser exibidos na página inicial.
+					Envie o logo, favicon e os banners da sua loja. O logo aparece no
+					cabeçalho da loja, o favicon aparece na aba do navegador e os banners
+					podem ser exibidos na página inicial.
 				</CardDescription>
 			</CardHeader>
 			<CardContent className="space-y-6">
-				{/* Logo section */}
-				<div className="space-y-3">
-					<h3 className="text-sm font-medium">Logo</h3>
-					<input
-						type="file"
-						ref={logoInputRef}
-						onChange={handleLogoInputChange}
-						accept="image/*"
-						className="hidden"
-					/>
-					<button
-						type="button"
-						onClick={() => logoInputRef.current?.click()}
-						onDragOver={handleLogoDragOver}
-						onDragLeave={handleLogoDragLeave}
-						onDrop={handleLogoDrop}
-						className={`flex aspect-[3/1] min-h-24 w-full max-w-xs cursor-pointer items-center justify-center overflow-hidden rounded-xl border-2 border-dashed transition-colors ${
-							isLogoDragging
-								? "border-primary bg-primary/10"
-								: "border-muted-foreground/30 bg-muted/30 hover:border-primary/50 hover:bg-muted/50"
-						}`}
-					>
-						{uploadLogoMutation.isPending ? (
-							<IconLoader className="size-8 animate-spin text-muted-foreground" />
-						) : logoUrl ? (
-							<img
-								src={logoUrl}
-								alt="Logo da loja"
-								className="max-h-full w-auto object-contain p-2"
-							/>
-						) : (
-							<div className="flex flex-col items-center gap-1 text-center text-sm text-muted-foreground">
-								<IconPhoto className="size-8" />
-								<span>Clique ou arraste para enviar o logo</span>
-							</div>
-						)}
-					</button>
+				{/* Logo and Favicon section */}
+				<div className="flex flex-col gap-6 md:flex-row">
+					{/* Logo section */}
+					<div className="space-y-3">
+						<h3 className="text-sm font-medium">Logo</h3>
+						<input
+							type="file"
+							ref={logoInputRef}
+							onChange={handleLogoInputChange}
+							accept="image/*"
+							className="hidden"
+						/>
+						<button
+							type="button"
+							onClick={() => logoInputRef.current?.click()}
+							onDragOver={handleLogoDragOver}
+							onDragLeave={handleLogoDragLeave}
+							onDrop={handleLogoDrop}
+							className={`flex aspect-[3/1] min-h-24 w-full max-w-xs cursor-pointer items-center justify-center overflow-hidden rounded-xl border-2 border-dashed transition-colors ${
+								isLogoDragging
+									? "border-primary bg-primary/10"
+									: "border-muted-foreground/30 bg-muted/30 hover:border-primary/50 hover:bg-muted/50"
+							}`}
+						>
+							{uploadLogoMutation.isPending ? (
+								<IconLoader className="size-8 animate-spin text-muted-foreground" />
+							) : logoUrl ? (
+								<img
+									src={logoUrl}
+									alt="Logo da loja"
+									className="max-h-full w-auto object-contain p-2"
+								/>
+							) : (
+								<div className="flex flex-col items-center gap-1 text-center text-sm text-muted-foreground">
+									<IconPhoto className="size-8" />
+									<span>Clique ou arraste para enviar o logo</span>
+								</div>
+							)}
+						</button>
+					</div>
+
+					{/* Favicon section */}
+					<div className="space-y-3">
+						<h3 className="text-sm font-medium">Favicon</h3>
+						<input
+							type="file"
+							ref={faviconInputRef}
+							onChange={handleFaviconInputChange}
+							accept="image/*"
+							className="hidden"
+						/>
+						<button
+							type="button"
+							onClick={() => faviconInputRef.current?.click()}
+							onDragOver={handleFaviconDragOver}
+							onDragLeave={handleFaviconDragLeave}
+							onDrop={handleFaviconDrop}
+							className={`flex aspect-[3/1] min-h-24 w-full max-w-xs cursor-pointer items-center justify-center overflow-hidden rounded-xl border-2 border-dashed transition-colors ${
+								isFaviconDragging
+									? "border-primary bg-primary/10"
+									: "border-muted-foreground/30 bg-muted/30 hover:border-primary/50 hover:bg-muted/50"
+							}`}
+						>
+							{uploadFaviconMutation.isPending ? (
+								<IconLoader className="size-8 animate-spin text-muted-foreground" />
+							) : faviconUrl ? (
+								<img
+									src={faviconUrl}
+									alt="Favicon da loja"
+									className="max-h-full w-auto object-contain p-2"
+								/>
+							) : (
+								<div className="flex flex-col items-center gap-1 text-center text-sm text-muted-foreground">
+									<IconPhoto className="size-8" />
+									<span>Clique ou arraste para enviar o favicon</span>
+								</div>
+							)}
+						</button>
+					</div>
 				</div>
 
 				<Separator />
