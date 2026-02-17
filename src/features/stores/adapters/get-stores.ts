@@ -2,10 +2,10 @@ import { apiClient } from "@/services/api";
 
 export const getStoresAdapter = async () => {
 	const response = await apiClient.get<
-		| { id: string; name: string; slug: string }[]
+		| { id: string; name: string; slug: string; faviconUrl?: string }[]
 		| {
-				stores?: { id: string; name: string; slug: string }[];
-				data?: { id: string; name: string; slug: string }[];
+				stores?: { id: string; name: string; slug: string; faviconUrl?: string }[];
+				data?: { id: string; name: string; slug: string; faviconUrl?: string }[];
 		  }
 	>("/stores/all");
 

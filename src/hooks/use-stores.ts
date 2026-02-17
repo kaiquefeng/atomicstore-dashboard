@@ -10,6 +10,7 @@ export interface Store {
 	name: string;
 	slug: string;
 	logo?: string;
+	favicon?: string;
 	plan?: string;
 }
 
@@ -18,6 +19,7 @@ export interface StoreWithIcon {
 	name: string;
 	slug: string;
 	logo: LucideIcon;
+	favicon?: string;
 	plan: string;
 }
 
@@ -27,6 +29,7 @@ function mapStoreToSwitcherFormat(store: Store): StoreWithIcon {
 		name: store.name,
 		slug: store.slug,
 		logo: GalleryVerticalEnd,
+		favicon: store.favicon,
 		plan: store.plan || "Free",
 	};
 }
@@ -45,6 +48,7 @@ export function useStores() {
 				id: store.id,
 				name: store.name,
 				slug: store.slug,
+				favicon: (store as { faviconUrl?: string }).faviconUrl,
 				plan: undefined,
 			}));
 			return storesAsStore.map(mapStoreToSwitcherFormat);

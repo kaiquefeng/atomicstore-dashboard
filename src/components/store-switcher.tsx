@@ -19,6 +19,7 @@ import {
 	SidebarMenuItem,
 	useSidebar,
 } from "@/components/ui/sidebar";
+import { cn } from "@/lib/utils";
 
 export function StoreSwitcher({
 	stores,
@@ -28,6 +29,7 @@ export function StoreSwitcher({
 		name: string;
 		slug: string;
 		logo: React.ElementType;
+		favicon?: string;
 		plan: string;
 	}[];
 }) {
@@ -82,8 +84,21 @@ export function StoreSwitcher({
 								size="lg"
 								className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
 							>
-								<div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
-									<activeStore.logo className="size-4" />
+								<div
+									className={cn(
+										"bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center overflow-hidden rounded-lg",
+										activeStore.favicon && "bg-transparent",
+									)}
+								>
+									{activeStore.favicon ? (
+										<img
+											src={activeStore.favicon}
+											alt=""
+											className="size-8 object-contain"
+										/>
+									) : (
+										<activeStore.logo className="size-4" />
+									)}
 								</div>
 								<div className="grid flex-1 text-left text-sm leading-tight">
 									<span className="truncate font-medium">
@@ -109,8 +124,16 @@ export function StoreSwitcher({
 									onClick={() => handleStoreSelect(store)}
 									className="gap-2 p-2"
 								>
-									<div className="flex size-6 items-center justify-center rounded-md border">
-										<store.logo className="size-3.5 shrink-0" />
+									<div className="flex size-6 shrink-0 items-center justify-center overflow-hidden rounded-md border">
+										{store.favicon ? (
+											<img
+												src={store.favicon}
+												alt=""
+												className="size-6 object-contain"
+											/>
+										) : (
+											<store.logo className="size-3.5" />
+										)}
 									</div>
 									{store.name}
 									<DropdownMenuShortcut>⌘{index + 1}</DropdownMenuShortcut>
