@@ -6,8 +6,9 @@ import * as React from "react";
 
 import { useStoreSlug } from "@/hooks/use-store-slug";
 import { useStores } from "@/hooks/use-stores";
-import { StoreInfoSection } from "@/features/store-settings/components/store-info-section";
+import { StoreBrandingSection } from "@/features/store-settings/components/store-branding-section";
 import { CustomDomainsSection } from "@/features/store-settings/components/custom-domains-section";
+import { StoreInfoSection } from "@/features/store-settings/components/store-info-section";
 
 export const Route = createFileRoute("/$store/_layout/settings_/general")({
 	component: GeneralSettingsPage,
@@ -48,6 +49,8 @@ function GeneralSettingsPage() {
 					Gerencie as informações e domínios da sua loja
 				</p>
 			</div>
+
+			<StoreBrandingSection />
 
 			<StoreInfoSection
 				storeName={currentStore.name}

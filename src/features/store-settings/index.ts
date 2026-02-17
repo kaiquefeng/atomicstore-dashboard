@@ -1,4 +1,5 @@
 export { CustomDomainsSection } from "./components/custom-domains-section";
+export { StoreBrandingSection } from "./components/store-branding-section";
 export { StoreInfoSection } from "./components/store-info-section";
 export {
 	useCreateCustomDomain,
