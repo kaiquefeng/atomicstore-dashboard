@@ -20,8 +20,10 @@ import { Route as StoreLayoutImagesRouteImport } from './routes/$store/_layout/i
 import { Route as StoreLayoutCouponsRouteImport } from './routes/$store/_layout/coupons'
 import { Route as StoreLayoutCategoriesRouteImport } from './routes/$store/_layout/categories'
 import { Route as StoreLayoutSettingsShippingRouteImport } from './routes/$store/_layout/settings_.shipping'
+import { Route as StoreLayoutSettingsPaymentRouteImport } from './routes/$store/_layout/settings_.payment'
 import { Route as StoreLayoutSettingsGeneralRouteImport } from './routes/$store/_layout/settings_.general'
 import { Route as StoreLayoutProductsAddRouteImport } from './routes/$store/_layout/products_.add'
+import { Route as StoreLayoutAdminPaymentMethodsRouteImport } from './routes/$store/_layout/admin_.payment-methods'
 
 const AuthAuthLayoutRoute = AuthAuthLayoutRouteImport.update({
   id: '/_auth/_auth-layout',
@@ -78,6 +80,12 @@ const StoreLayoutSettingsShippingRoute =
     path: '/settings/shipping',
     getParentRoute: () => StoreLayoutRoute,
   } as any)
+const StoreLayoutSettingsPaymentRoute =
+  StoreLayoutSettingsPaymentRouteImport.update({
+    id: '/settings_/payment',
+    path: '/settings/payment',
+    getParentRoute: () => StoreLayoutRoute,
+  } as any)
 const StoreLayoutSettingsGeneralRoute =
   StoreLayoutSettingsGeneralRouteImport.update({
     id: '/settings_/general',
@@ -89,6 +97,12 @@ const StoreLayoutProductsAddRoute = StoreLayoutProductsAddRouteImport.update({
   path: '/products/add',
   getParentRoute: () => StoreLayoutRoute,
 } as any)
+const StoreLayoutAdminPaymentMethodsRoute =
+  StoreLayoutAdminPaymentMethodsRouteImport.update({
+    id: '/admin_/payment-methods',
+    path: '/admin/payment-methods',
+    getParentRoute: () => StoreLayoutRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/$store': typeof StoreLayoutRouteWithChildren
@@ -101,8 +115,10 @@ export interface FileRoutesByFullPath {
   '/$store/tags': typeof StoreLayoutTagsRoute
   '/signin': typeof AuthAuthLayoutSigninRoute
   '/$store/': typeof StoreLayoutIndexRoute
+  '/$store/admin/payment-methods': typeof StoreLayoutAdminPaymentMethodsRoute
   '/$store/products/add': typeof StoreLayoutProductsAddRoute
   '/$store/settings/general': typeof StoreLayoutSettingsGeneralRoute
+  '/$store/settings/payment': typeof StoreLayoutSettingsPaymentRoute
   '/$store/settings/shipping': typeof StoreLayoutSettingsShippingRoute
 }
 export interface FileRoutesByTo {
@@ -115,8 +131,10 @@ export interface FileRoutesByTo {
   '/$store/tags': typeof StoreLayoutTagsRoute
   '/signin': typeof AuthAuthLayoutSigninRoute
   '/$store': typeof StoreLayoutIndexRoute
+  '/$store/admin/payment-methods': typeof StoreLayoutAdminPaymentMethodsRoute
   '/$store/products/add': typeof StoreLayoutProductsAddRoute
   '/$store/settings/general': typeof StoreLayoutSettingsGeneralRoute
+  '/$store/settings/payment': typeof StoreLayoutSettingsPaymentRoute
   '/$store/settings/shipping': typeof StoreLayoutSettingsShippingRoute
 }
 export interface FileRoutesById {
@@ -131,8 +149,10 @@ export interface FileRoutesById {
   '/$store/_layout/tags': typeof StoreLayoutTagsRoute
   '/_auth/_auth-layout/signin': typeof AuthAuthLayoutSigninRoute
   '/$store/_layout/': typeof StoreLayoutIndexRoute
+  '/$store/_layout/admin_/payment-methods': typeof StoreLayoutAdminPaymentMethodsRoute
   '/$store/_layout/products_/add': typeof StoreLayoutProductsAddRoute
   '/$store/_layout/settings_/general': typeof StoreLayoutSettingsGeneralRoute
+  '/$store/_layout/settings_/payment': typeof StoreLayoutSettingsPaymentRoute
   '/$store/_layout/settings_/shipping': typeof StoreLayoutSettingsShippingRoute
 }
 export interface FileRouteTypes {
@@ -148,8 +168,10 @@ export interface FileRouteTypes {
     | '/$store/tags'
     | '/signin'
     | '/$store/'
+    | '/$store/admin/payment-methods'
     | '/$store/products/add'
     | '/$store/settings/general'
+    | '/$store/settings/payment'
     | '/$store/settings/shipping'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -162,8 +184,10 @@ export interface FileRouteTypes {
     | '/$store/tags'
     | '/signin'
     | '/$store'
+    | '/$store/admin/payment-methods'
     | '/$store/products/add'
     | '/$store/settings/general'
+    | '/$store/settings/payment'
     | '/$store/settings/shipping'
   id:
     | '__root__'
@@ -177,8 +201,10 @@ export interface FileRouteTypes {
     | '/$store/_layout/tags'
     | '/_auth/_auth-layout/signin'
     | '/$store/_layout/'
+    | '/$store/_layout/admin_/payment-methods'
     | '/$store/_layout/products_/add'
     | '/$store/_layout/settings_/general'
+    | '/$store/_layout/settings_/payment'
     | '/$store/_layout/settings_/shipping'
   fileRoutesById: FileRoutesById
 }
@@ -266,6 +292,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StoreLayoutSettingsShippingRouteImport
       parentRoute: typeof StoreLayoutRoute
     }
+    '/$store/_layout/settings_/payment': {
+      id: '/$store/_layout/settings_/payment'
+      path: '/settings/payment'
+      fullPath: '/$store/settings/payment'
+      preLoaderRoute: typeof StoreLayoutSettingsPaymentRouteImport
+      parentRoute: typeof StoreLayoutRoute
+    }
     '/$store/_layout/settings_/general': {
       id: '/$store/_layout/settings_/general'
       path: '/settings/general'
@@ -280,6 +313,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StoreLayoutProductsAddRouteImport
       parentRoute: typeof StoreLayoutRoute
     }
+    '/$store/_layout/admin_/payment-methods': {
+      id: '/$store/_layout/admin_/payment-methods'
+      path: '/admin/payment-methods'
+      fullPath: '/$store/admin/payment-methods'
+      preLoaderRoute: typeof StoreLayoutAdminPaymentMethodsRouteImport
+      parentRoute: typeof StoreLayoutRoute
+    }
   }
 }
 
@@ -291,8 +331,10 @@ interface StoreLayoutRouteChildren {
   StoreLayoutProductsRoute: typeof StoreLayoutProductsRoute
   StoreLayoutTagsRoute: typeof StoreLayoutTagsRoute
   StoreLayoutIndexRoute: typeof StoreLayoutIndexRoute
+  StoreLayoutAdminPaymentMethodsRoute: typeof StoreLayoutAdminPaymentMethodsRoute
   StoreLayoutProductsAddRoute: typeof StoreLayoutProductsAddRoute
   StoreLayoutSettingsGeneralRoute: typeof StoreLayoutSettingsGeneralRoute
+  StoreLayoutSettingsPaymentRoute: typeof StoreLayoutSettingsPaymentRoute
   StoreLayoutSettingsShippingRoute: typeof StoreLayoutSettingsShippingRoute
 }
 
@@ -304,8 +346,10 @@ const StoreLayoutRouteChildren: StoreLayoutRouteChildren = {
   StoreLayoutProductsRoute: StoreLayoutProductsRoute,
   StoreLayoutTagsRoute: StoreLayoutTagsRoute,
   StoreLayoutIndexRoute: StoreLayoutIndexRoute,
+  StoreLayoutAdminPaymentMethodsRoute: StoreLayoutAdminPaymentMethodsRoute,
   StoreLayoutProductsAddRoute: StoreLayoutProductsAddRoute,
   StoreLayoutSettingsGeneralRoute: StoreLayoutSettingsGeneralRoute,
+  StoreLayoutSettingsPaymentRoute: StoreLayoutSettingsPaymentRoute,
   StoreLayoutSettingsShippingRoute: StoreLayoutSettingsShippingRoute,
 }
 

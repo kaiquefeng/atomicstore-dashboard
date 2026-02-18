@@ -5,6 +5,7 @@ import {
 	LayoutGrid,
 	PieChart,
 	Settings2,
+	ShieldCheck,
 	ShoppingBag,
 	Truck,
 	UsersRound,
@@ -95,7 +96,18 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 					},
 					{
 						title: "Cobrança",
-						url: "#",
+						url: "/settings/payment",
+					},
+				],
+			},
+			{
+				title: "Admin",
+				url: "#",
+				icon: ShieldCheck,
+				items: [
+					{
+						title: "Métodos de pagamento",
+						url: "/admin/payment-methods",
 					},
 				],
 			},

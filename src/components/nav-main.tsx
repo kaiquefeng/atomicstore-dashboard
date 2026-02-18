@@ -42,6 +42,9 @@ export function NavMain({
 		images: "/$store/images",
 		coupons: "/$store/coupons",
 		"settings/shipping": "/$store/settings/shipping",
+		"settings/payment": "/$store/settings/payment",
+		"settings/general": "/$store/settings/general",
+		"admin/payment-methods": "/$store/admin/payment-methods",
 	};
 
 	const getRouteId = (url: string): string | undefined => {
