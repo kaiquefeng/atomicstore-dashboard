@@ -39,6 +39,8 @@ export interface CreateProductPayload {
 	widthMm?: number;
 	lengthMm?: number;
 	description?: string;
+	categoryIds?: string[];
+	tagIds?: string[];
 	images?: Array<{
 		id?: string;
 		url?: string;

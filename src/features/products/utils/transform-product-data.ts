@@ -21,12 +21,34 @@ export function transformProductDataToFormData(
 		(productData as { lengthMm?: number }).lengthMm ??
 		(productData as { length?: number }).length;
 
+	const rawCategories =
+		(productData as { categoryIds?: string[] }).categoryIds ??
+		(productData as { categories?: Array<{ id: string }> }).categories ??
+		(productData as { categoryId?: string }).categoryId ??
+		productData.category;
+	const categoryIds: string[] = Array.isArray(rawCategories)
+		? rawCategories
+				.map((c) => (typeof c === "string" ? c : (c as { id: string })?.id))
+				.filter((id): id is string => !!id)
+		: typeof rawCategories === "string" && rawCategories
+			? [rawCategories]
+			: [];
+
+	const rawTags =
+		(productData as { tagIds?: string[] }).tagIds ??
+		(productData as { tags?: Array<{ id: string } | string> }).tags;
+	const tagIds: string[] = Array.isArray(rawTags)
+		? rawTags
+				.map((t) => (typeof t === "string" ? t : (t as { id: string })?.id))
+				.filter((id): id is string => !!id)
+		: [];
+
 	const formData: Partial<ProductFormData> = {
 		title: productData.title || productData.name || "",
 		description: (productData.description as string) || "",
 		status: (productData.status as "draft" | "active" | "archived") || "draft",
-		category: (productData.category as string) || "",
-		tags: (productData.tags as string) || "",
+		categoryIds,
+		tagIds,
 		stock: productData.stock ? String(productData.stock) : "",
 		// formulário usa peso em gramas
 		weight: typeof weightGrams === "number" ? String(weightGrams) : "",

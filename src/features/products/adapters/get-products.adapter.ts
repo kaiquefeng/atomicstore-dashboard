@@ -9,6 +9,11 @@ export interface Product {
 	images?: string[];
 	type?: string;
 	category?: string;
+	categoryId?: string;
+	categoryIds?: string[];
+	categories?: Array<{ id: string; name?: string }>;
+	tagIds?: string[];
+	tags?: Array<{ id: string; name?: string } | string>;
 	status?: string;
 	[key: string]: unknown;
 }

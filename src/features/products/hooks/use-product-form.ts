@@ -18,14 +18,14 @@ export interface UseProductFormOptions {
 	initialData?: {
 		title?: string;
 		description?: string;
-		category?: string;
+		categoryIds?: string[];
 		stock?: string;
 		weight?: string;
 		height?: string;
 		width?: string;
 		length?: string;
 		status?: "draft" | "active" | "archived";
-		tags?: string;
+		tagIds?: string[];
 		productVariants?: ProductVariant[];
 		productImages?: ProductImage[];
 		variantOptions?: VariantOption[];
@@ -80,7 +80,7 @@ export function useProductForm(
 		defaultValues: {
 			title: initialData?.title ?? "",
 			description: initialData?.description ?? "",
-			category: initialData?.category ?? "",
+			categoryIds: initialData?.categoryIds ?? [],
 			stock: initialData?.stock ?? "",
 			weight: initialData?.weight ?? "",
 			height: initialData?.height ?? "",
@@ -90,7 +90,7 @@ export function useProductForm(
 				| "draft"
 				| "active"
 				| "archived",
-			tags: initialData?.tags ?? "",
+			tagIds: initialData?.tagIds ?? [],
 			productVariants: initialData?.productVariants ?? [],
 			productImages: initialData?.productImages ?? [],
 			variantOptions: initialData?.variantOptions ?? [],

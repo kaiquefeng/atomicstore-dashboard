@@ -18,6 +18,8 @@ export interface CreateProductData {
 	title: string;
 	description?: string;
 	status?: "draft" | "active" | "archived";
+	categoryIds?: string[];
+	tagIds?: string[];
 	variants: ProductVariant[];
 	images: File[];
 	stock?: number;
@@ -69,6 +71,8 @@ export function useCreateProduct() {
 				widthMm: data.widthMm,
 				lengthMm: data.lengthMm,
 				description: data.description,
+				categoryIds: data.categoryIds?.length ? data.categoryIds : undefined,
+				tagIds: data.tagIds?.length ? data.tagIds : undefined,
 				images: uploadedImages.map((img) => ({
 					id: img.id,
 					url: img.url,

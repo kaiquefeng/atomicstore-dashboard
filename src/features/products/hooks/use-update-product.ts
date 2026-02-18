@@ -21,6 +21,8 @@ export interface UpdateProductData {
 	title: string;
 	description?: string;
 	status?: "draft" | "active" | "archived";
+	categoryIds?: string[];
+	tagIds?: string[];
 	variants: ProductVariant[];
 	stock?: number;
 	weightGrams?: number;
@@ -99,6 +101,8 @@ export function useUpdateProduct() {
 				widthMm: data.widthMm,
 				lengthMm: data.lengthMm,
 				description: data.description,
+				categoryIds: data.categoryIds?.length ? data.categoryIds : undefined,
+				tagIds: data.tagIds?.length ? data.tagIds : undefined,
 				images: allImages,
 				properties: data.properties,
 			};

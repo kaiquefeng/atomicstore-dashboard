@@ -30,6 +30,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 	const { user, signOut } = useAuth();
 	const { stores, isLoading: isLoadingStores } = useStores();
 
+	// const isAdmin = user?.rule === "ADMIN";
+
 	const navMain = React.useMemo(() => {
 		return [
 			{
