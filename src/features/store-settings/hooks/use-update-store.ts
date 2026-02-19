@@ -25,6 +25,11 @@ export function useUpdateStore() {
 		},
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ["stores"] });
+			if (currentStore?.id) {
+				queryClient.invalidateQueries({
+					queryKey: ["store-details", currentStore.id],
+				});
+			}
 		},
 	});
 }

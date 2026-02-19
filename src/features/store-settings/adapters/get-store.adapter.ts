@@ -7,6 +7,7 @@ export interface StoreDetailsResponse {
 	logo?: string;
 	banners?: string[];
 	description?: string;
+	socialLinks?: Record<string, string>;
 	createdAt?: string;
 	updatedAt?: string;
 	[key: string]: unknown;

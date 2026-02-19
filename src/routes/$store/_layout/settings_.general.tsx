@@ -3,12 +3,12 @@
 import { IconLoader } from "@tabler/icons-react";
 import { createFileRoute } from "@tanstack/react-router";
 import * as React from "react";
-
+import { CustomDomainsSection } from "@/features/store-settings/components/custom-domains-section";
+import { StoreBrandingSection } from "@/features/store-settings/components/store-branding-section";
+import { StoreInfoSection } from "@/features/store-settings/components/store-info-section";
+import { useStoreDetails } from "@/features/store-settings/hooks/use-store-details";
 import { useStoreSlug } from "@/hooks/use-store-slug";
 import { useStores } from "@/hooks/use-stores";
-import { StoreBrandingSection } from "@/features/store-settings/components/store-branding-section";
-import { CustomDomainsSection } from "@/features/store-settings/components/custom-domains-section";
-import { StoreInfoSection } from "@/features/store-settings/components/store-info-section";
 
 export const Route = createFileRoute("/$store/_layout/settings_/general")({
 	component: GeneralSettingsPage,
@@ -17,13 +17,14 @@ export const Route = createFileRoute("/$store/_layout/settings_/general")({
 function GeneralSettingsPage() {
 	const storeSlug = useStoreSlug();
 	const { stores, isLoading } = useStores();
+	const { storeDetails, isLoading: isLoadingDetails } = useStoreDetails();
 
 	const currentStore = React.useMemo(() => {
 		if (!storeSlug) return null;
 		return stores.find((store) => store.slug === storeSlug) || null;
 	}, [storeSlug, stores]);
 
-	if (isLoading) {
+	if (isLoading || isLoadingDetails) {
 		return (
 			<div className="flex items-center justify-center h-64">
 				<IconLoader className="size-6 animate-spin text-muted-foreground" />
@@ -55,6 +56,8 @@ function GeneralSettingsPage() {
 			<StoreInfoSection
 				storeName={currentStore.name}
 				storeSlug={currentStore.slug}
+				storeDescription={storeDetails?.description}
+				storeSocialLinks={storeDetails?.socialLinks}
 			/>
 
 			<CustomDomainsSection />

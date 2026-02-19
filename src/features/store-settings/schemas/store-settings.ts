@@ -1,5 +1,10 @@
 import { z } from "zod";
 
+const socialLinkItemSchema = z.object({
+	network: z.string(),
+	value: z.string(),
+});
+
 export const updateStoreSchema = z.object({
 	name: z.string().min(1, "Nome da loja é obrigatório"),
 	slug: z
@@ -9,6 +14,8 @@ export const updateStoreSchema = z.object({
 			/^[a-z0-9]+(?:-[a-z0-9]+)*$/,
 			"Slug deve conter apenas letras minúsculas, números e hífens",
 		),
+	description: z.string().default(""),
+	socialLinks: z.array(socialLinkItemSchema).default([]),
 });
 
 export type UpdateStoreFormData = z.infer<typeof updateStoreSchema>;
